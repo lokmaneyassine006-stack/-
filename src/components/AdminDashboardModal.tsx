@@ -5,7 +5,7 @@ import {
   CreditCard, Sparkles, Building2, Zap, BarChart3,
   Crown, Infinity, Gift, Copy, CheckCheck, Clock, Download,
   ArrowUpRight, Timer, Layers, Loader2, CheckCircle2, XCircle,
-  MessageSquare, Send, ExternalLink
+  MessageSquare, Send, ExternalLink, RotateCcw
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { copyToClipboard } from '../utils/clipboard';
@@ -39,7 +39,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     withdrawals,
     approveWithdrawal,
     rejectWithdrawal,
-    resetWalletToRealProfits
+    resetWalletToRealProfits,
+    resetEntireSiteExceptRealProfits
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<'stats' | 'settings' | 'payment_accounts' | 'withdrawals' | 'vouchers' | 'security' | 'sms'>('stats');
@@ -53,6 +54,22 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     setIsAdminResetting(true);
     try {
       const res = resetWalletToRealProfits();
+      setAdminResetMsg(res.message);
+      setTimeout(() => setAdminResetMsg(null), 6000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAdminResetting(false);
+    }
+  };
+
+  const handleAdminResetEntireSite = () => {
+    if (!window.confirm('هل أنت متأكد من إعادة تعيين كامل بيانات وأقسام الموقع إلى الحالة الافتراضية مع الحفاظ على الأرباح الحقيقية (3,600 د.ج)؟')) {
+      return;
+    }
+    setIsAdminResetting(true);
+    try {
+      const res = resetEntireSiteExceptRealProfits();
       setAdminResetMsg(res.message);
       setTimeout(() => setAdminResetMsg(null), 6000);
     } catch (e) {
@@ -303,15 +320,26 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <div className="flex flex-wrap items-center gap-2 self-end sm:self-center shrink-0">
                   <button
                     type="button"
                     onClick={handleAdminResetRealProfits}
                     disabled={isAdminResetting}
-                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isAdminResetting ? 'animate-spin' : ''}`} />
-                    <span>إعادة ضبط المحفظة للأرباح الحقيقية</span>
+                    <span>ضبط المحفظة للأرباح الحقيقية</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAdminResetEntireSite}
+                    disabled={isAdminResetting}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    title="إعادة تعيين كافة أقسام وبيانات الموقع مع الإبقاء على الأرباح الحقيقية"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${isAdminResetting ? 'animate-spin' : ''}`} />
+                    <span>إعادة تعيين كل شيء في الموقع (ما عدا الأرباح)</span>
                   </button>
                 </div>
               </div>
@@ -414,6 +442,26 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               >
                 حفظ تعديلات المنصة
               </button>
+
+              {/* Danger Zone: Full site reset preserving real profits */}
+              <div className="mt-6 p-4 rounded-2xl border border-rose-300 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 space-y-3">
+                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <h4 className="font-bold text-xs">إعادة ضبط شاملة لبيانات الموقع</h4>
+                </div>
+                <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
+                  تتيح لك إعادة ضبط كافة أقسام وبيانات الموقع (الكتب، المراجعات، منشورات المنتدى، والسلات) إلى الحالة الأصلية الافتراضية مع <strong>الحفاظ الكامل على الأرباح الحقيقية فقط (3,600 د.ج)</strong> وإزالة أي بيانات وهمية.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleAdminResetEntireSite}
+                  disabled={isAdminResetting}
+                  className="px-4 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shadow-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isAdminResetting ? 'animate-spin' : ''}`} />
+                  <span>تنفيذ إعادة تعيين كل شيء في الموقع ما عدا الأرباح الحقيقية</span>
+                </button>
+              </div>
             </form>
           )}
 

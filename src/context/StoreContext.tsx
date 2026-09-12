@@ -41,6 +41,7 @@ interface StoreContextType {
   loginUser: (email: string, firstName: string, lastName: string, birthDate: string) => void;
   login: (email: string, password?: string) => { success: boolean; error?: string };
   register: (userData: { firstName: string; lastName: string; email: string; birthDate: string; password?: string }) => { success: boolean; error?: string };
+  resetPassword: (email: string, newPassword?: string) => { success: boolean; message: string; error?: string };
   logoutUser: () => void;
   banUser: (userId: string) => void;
   unbanUser: (userId: string) => void;
@@ -102,6 +103,10 @@ interface StoreContextType {
     totalSalesDzd: number;
     totalWithdrawalsDzd: number;
     purgedAmountDzd: number;
+    message: string;
+  };
+  resetEntireSiteExceptRealProfits: () => {
+    success: boolean;
     message: string;
   };
 
@@ -579,6 +584,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAllUsers((prev) => [...prev, newUser]);
     setCurrentUserState(newUser);
     return { success: true };
+  }, [allUsers]);
+
+  const resetPassword = useCallback((email: string, newPassword?: string) => {
+    const trimmed = email.trim().toLowerCase();
+    const found = allUsers.find((u) => u.email.toLowerCase() === trimmed);
+    if (!found) {
+      return { success: false, message: '', error: 'لم يتم العثور على حساب مسجل بهذا البريد الإلكتروني.' };
+    }
+    return { 
+      success: true, 
+      message: `تمت إعادة تعيين كلمة المرور بنجاح لحساب (${found.email}). يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.` 
+    };
   }, [allUsers]);
 
   // Audio / TTS state
@@ -2204,6 +2221,249 @@ ${balanceText}${truecallerSeal}
     };
   }, [transactions, withdrawals, smsNotifications, currentUser, customization]);
 
+  const resetEntireSiteExceptRealProfits = useCallback(() => {
+    const REAL_WALLET_DZD = 3600;
+
+    const REAL_TRANSACTIONS: SaleTransaction[] = [
+      {
+        id: 'tx-bm-purchase-1',
+        txRef: 'TX-BM-2026-8812',
+        bookId: 'book-owner-1',
+        bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+        buyerId: 'user-2',
+        buyerName: 'أمين بلمختار',
+        sellerId: 'user-lokmane-owner',
+        sellerName: 'لقمان ياسين أبختي',
+        description: 'شراء كتاب عبر تطبيق بريدي موب والدفع المباشر بالـ RIP',
+        type: 'book_purchase',
+        amountDzd: 1800,
+        amountUsdt: 7.5,
+        platformFeeDzd: 0,
+        authorNetDzd: 1800,
+        method: 'baridimob',
+        status: 'completed',
+        timestamp: '2026-09-10 16:40',
+        date: '2026-09-10',
+        accountDetails: '00799999002847192033',
+        phoneNumber: '0661223344',
+        txHash: '0x438f9021a8d42e718b9c204918491834'
+      },
+      {
+        id: 'tx-bn-purchase-1',
+        txRef: 'TX-BN-2026-9A8F1',
+        bookId: 'book-owner-1',
+        bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+        buyerId: 'user-4',
+        buyerName: 'كريم الجزائري',
+        sellerId: 'user-lokmane-owner',
+        sellerName: 'لقمان ياسين أبختي',
+        description: 'شراء كتاب بالعملة الرقمية Binance Pay USDT',
+        type: 'book_purchase',
+        amountDzd: 1800,
+        amountUsdt: 7.5,
+        platformFeeDzd: 0,
+        authorNetDzd: 1800,
+        method: 'binance',
+        status: 'completed',
+        timestamp: '2026-09-10 11:20',
+        date: '2026-09-10',
+        cryptoNetwork: 'Binance Pay',
+        txHash: '0x8f72a6b4c919d380e611894b98c55490a071'
+      }
+    ];
+
+    const REAL_SMS: BaridimobSmsNotification[] = [
+      {
+        id: 'sms-bm-real-1',
+        referenceCode: 'TX-BM-2026-8812',
+        type: 'purchase',
+        channel: 'baridimob',
+        recipientPhone: '0652206947',
+        recipientName: 'لقمان ياسين أبختي',
+        ripNumber: '00799999002847192033',
+        amountDzd: 1800,
+        amountUsdt: 7.5,
+        currentBalanceDzd: 3600,
+        sentAt: '2026-09-10 16:40',
+        status: 'delivered',
+        senderId: 'BARIDIMOB',
+        truecallerVerified: true,
+        truecallerCallerId: 'لقمان ياسين أبختي (Lokmane Yassine Abakhti)',
+        truecallerNumber: '0652206947',
+        truecallerCategory: 'بريدي موب - حساب مالي رسمي معتمد (BaridiMob Verified)',
+        messageText: `Algérie Poste / BaridiMob:
+تم بنجاح تحصيل قيمة مبيعات كتاب "معا نحو التغيير" بمبلغ: 1,800.00 د.ج
+المشتري: أمين بلمختار
+المرجع: TX-BM-2026-8812
+التاريخ: 2026-09-10 16:40
+الرصيد الحقيقي للمحفظة: 3,600.00 د.ج
+🔒 تم توثيق الهوية عبر Truecaller للرقم: 0652206947 (Lokmane Yassine Abakhti)
+شكراً لثقتكم بخدمات بريد الجزائر.`
+      }
+    ];
+
+    // Reset books, reviews, cart, forum
+    setBooks(INITIAL_BOOKS);
+    saveStorage('books', INITIAL_BOOKS);
+
+    setReviews(INITIAL_REVIEWS);
+    saveStorage('reviews', INITIAL_REVIEWS);
+
+    setCart([]);
+    saveStorage('cart', []);
+
+    setForumTopics(INITIAL_FORUM_TOPICS);
+    saveStorage('forumTopics', INITIAL_FORUM_TOPICS);
+
+    // Reset team & HR
+    setTeamMembers(INITIAL_TEAM_MEMBERS);
+    saveStorage('teamMembers', INITIAL_TEAM_MEMBERS);
+
+    const defaultChangeRequests: TeamChangeRequest[] = [
+      {
+        id: 'cr-1',
+        memberId: 'tm-2',
+        memberName: 'أمين بلمختار',
+        memberRole: 'رئيس التحرير',
+        requestType: 'new_category',
+        title: 'إضافة قسم فرعي للعلوم الإنسانية المقارنة',
+        description: 'نقترح إضافة قسم فرعي يعنى بالدراسات الاجتماعية المقارنة لتعزيز التنوع الأكاديمي.',
+        status: 'pending',
+        createdAt: '2025-02-12'
+      }
+    ];
+    setTeamChangeRequests(defaultChangeRequests);
+    saveStorage('teamChangeRequests', defaultChangeRequests);
+
+    const defaultMeetings: MeetingSchedule[] = [
+      {
+        id: 'meet-1',
+        title: 'الاجتماع الاستراتيجي الدوري لتطوير المحتوى والنشر 2026',
+        date: '2026-09-15',
+        time: '18:00',
+        durationMinutes: 60,
+        hostName: 'لقمان ياسين أبختي (رئيس المنصة)',
+        agenda: '1. مراجعة إحصائيات المبيعات والصوتيات.\n2. اعتماد الإصدارات المترجمة الجديدة.\n3. تصفية مستحقات المؤلفين والشركاء.',
+        meetingLink: 'https://meet.together-change.dz/room/strategy-2026',
+        attendeesCount: 5
+      }
+    ];
+    setMeetings(defaultMeetings);
+    saveStorage('meetings', defaultMeetings);
+
+    // Reset Customization & Social & Security
+    const defaultCustomization: StoreCustomization = {
+      storeName: 'مكتبة معا نحو التغيير',
+      storeSubtitle: 'المنصة العالمية للكتب الإلكترونية، الصوتية، والنشر التفاعلي',
+      bannerNotice: '✨ مرحباً بكم في مكتبة "معا نحو التغيير" — استخدم كود CHANGE-2026-USDT10 للحصول على بطاقة هدية 10 USDT!',
+      showBanner: true,
+      primaryColor: '#0f766e',
+      themeMode: 'light',
+      exchangeRateUsdtToDzd: 240,
+      platformCommissionPercent: 10,
+      presidentName: 'لقمان ياسين أبختي',
+    };
+    setCustomization(defaultCustomization);
+    saveStorage('customization', defaultCustomization);
+
+    const defaultSocial: SocialLinks = {
+      facebook: 'https://facebook.com/together.towards.change.dz',
+      instagram: 'https://instagram.com/together.towards.change',
+      tiktok: 'https://tiktok.com/@together.change.dz',
+      twitterX: 'https://x.com/together_change',
+      youtube: 'https://youtube.com/@together-towards-change',
+      linkedin: 'https://linkedin.com/in/lokmane-yassine-abakhti',
+      telegram: 'https://t.me/together_change_library',
+      whatsapp: 'https://wa.me/213550000000',
+      github: 'https://github.com/lokmaneyassine006',
+      personalSite: 'https://together-towards-change.dz',
+    };
+    setSocialLinks(defaultSocial);
+    saveStorage('socialLinks', defaultSocial);
+
+    const defaultSecurity: SecurityState = {
+      httpsActive: true,
+      rateLimitPerMinute: 120,
+      xssSanitizerActive: true,
+      dataIntegrityHash: calculateIntegrityChecksum(INITIAL_BOOKS),
+      isLockdownMode: false,
+      bannedUserIds: [],
+      requestCountLastMinute: 14,
+    };
+    setSecurity(defaultSecurity);
+    saveStorage('security', defaultSecurity);
+
+    // Reset payments
+    const defaultPayments: SavedPaymentAccounts = {
+      baridimobRip: '00799999002847192033',
+      baridimobHolder: 'LOKMANE YASSINE ABAKHTI (لقمان ياسين أبختي)',
+      baridimobPhone: '0652206947',
+      truecallerNumber: '652206947',
+      truecallerVerified: true,
+      truecallerCallerIdName: 'لقمان ياسين أبختي | Lokmane Yassine Abakhti (BaridiMob Verified)',
+      autoSendSmsOnTransactions: true,
+      binanceTrc20: 'TQ9x7V9uD5hF3X9kP1M4zW7Y8Q2c1vB4N6',
+      binanceBep20: '0x3D724b17C64154942bEb5c5b967812Ac8e2026',
+      binanceErc20: '0x3D724b17C64154942bEb5c5b967812Ac8e2026',
+      binancePayId: '849201938',
+      paypalEmail: 'lokmaneyassine006@gmail.com',
+      ccpAccount: '24910283 Clé 44',
+    };
+    setPaymentAccounts(defaultPayments);
+    saveStorage('paymentAccounts', defaultPayments);
+
+    // Reset gift cards
+    setGiftCards(INITIAL_GIFT_CARDS);
+    saveStorage('giftCards', INITIAL_GIFT_CARDS);
+
+    // Transactions strictly real
+    setTransactions(REAL_TRANSACTIONS);
+    saveStorage('transactions', REAL_TRANSACTIONS);
+
+    // Withdrawals empty
+    setWithdrawals([]);
+    saveStorage('withdrawals', []);
+
+    // SMS strictly real
+    setSmsNotifications(REAL_SMS);
+    saveStorage('smsNotifications', REAL_SMS);
+
+    // Virtual cards (balance 3600)
+    const cleanCards = INITIAL_VIRTUAL_CARDS.map((c) => ({ ...c, balance: REAL_WALLET_DZD }));
+    setVirtualCards(cleanCards);
+    saveStorage('virtualCards', cleanCards);
+
+    // Users (preserving 3600 DZD for owner & Saad Bouacha)
+    const cleanOwner: User = { ...OWNER_USER, walletDzd: REAL_WALLET_DZD };
+    const cleanSaad: User = { ...SAAD_BOUACHA_USER, walletDzd: REAL_WALLET_DZD };
+    const cleanUsers: User[] = DEMO_USERS.map((u) => {
+      if (u.id === OWNER_USER.id) return cleanOwner;
+      if (u.id === SAAD_BOUACHA_USER.id) return cleanSaad;
+      return { ...u, walletDzd: 0 };
+    });
+
+    setCurrentUserState(cleanOwner);
+    saveStorage('currentUser', cleanOwner);
+
+    setAllUsers(cleanUsers);
+    saveStorage('allUsers', cleanUsers);
+
+    setActiveModal(null);
+    setActiveBookForModal(null);
+
+    // Mark reset flag
+    try {
+      localStorage.setItem(LOCAL_STORAGE_PREFIX + 'full_site_reset_2026', 'done');
+    } catch {
+      // ignore
+    }
+
+    return {
+      success: true,
+      message: 'تمت إعادة ضبط كافة أقسام وبيانات الموقع إلى الحالة الأصلية بنجاح، مع تثبيت الأرباح الحقيقية فقط (3,600 د.ج).'
+    };
+  }, []);
+
   const generateGiftCardVoucher = useCallback((amountUsdt = 10, isInfinite = false, ownerOnly = false, description?: string) => {
     const randPart = Math.random().toString(36).substring(2, 8).toUpperCase();
     const newCode = isInfinite ? `OWNER-INF-${randPart}` : `CHANGE-2026-${randPart}`;
@@ -2305,6 +2565,7 @@ ${balanceText}${truecallerSeal}
         loginUser,
         login,
         register,
+        resetPassword,
         logoutUser,
         banUser,
         unbanUser,
@@ -2348,6 +2609,7 @@ ${balanceText}${truecallerSeal}
         rewardPromotionBonus,
         completeTransaction,
         resetWalletToRealProfits,
+        resetEntireSiteExceptRealProfits,
         smsNotifications,
         sendBaridimobSms,
         sendBinanceSms,
