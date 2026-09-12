@@ -526,12 +526,6 @@ export const INITIAL_GIFT_CARDS: GiftCardVoucher[] = [
     createdAt: '2026-01-01'
   },
   {
-    code: 'CHANGE-2026-USDT10',
-    amountUsdt: 10,
-    isUsed: false,
-    createdAt: '2025-01-01'
-  },
-  {
     code: 'LOKMANE-VIP-GIFT10',
     amountUsdt: 10,
     isUsed: false,

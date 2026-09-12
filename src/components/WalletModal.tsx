@@ -1176,9 +1176,6 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                     <p className="text-xs text-stone-600 dark:text-stone-300">
                       أدخل رمز بطاقة الهدية أو قسيمة الشحن لتعبئة رصيد المحفظة فورياً.
                     </p>
-                    <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400 block">
-                      كود الهدية الترحيبية للزوار: CHANGE-2026-USDT10
-                    </span>
                   </div>
 
                   <form onSubmit={handleGiftSubmit} className="space-y-3">

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
-  Search, Sparkles, PlusCircle, Headphones, Gift, CreditCard, 
+  Search, Sparkles, PlusCircle, Headphones, CreditCard, 
   MessageSquare, ShieldCheck, Check, ArrowRight, Zap, Filter,
-  Crown, Copy, CheckCheck, BookOpen, Layers, Users, Infinity
+  Crown, BookOpen, Layers, Users
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { copyToClipboard } from '../utils/clipboard';
 
 interface StoreHeroProps {
   searchQuery: string;
@@ -37,33 +36,9 @@ export const StoreHero: React.FC<StoreHeroProps> = ({
   const { 
     customization, 
     setActiveModal, 
-    redeemGiftCard, 
     currentUser,
     books 
   } = useStore();
-
-  const [giftCardCode, setGiftCardCode] = useState('');
-  const [giftMessage, setGiftMessage] = useState<{ text: string; isSuccess: boolean } | null>(null);
-  const [copiedCode, setCopiedCode] = useState(false);
-
-  const defaultPromoCode = 'CHANGE-2026-USDT10';
-
-  const handleCopyCode = async () => {
-    await copyToClipboard(defaultPromoCode);
-    setGiftCardCode(defaultPromoCode);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
-  };
-
-  const handleRedeem = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!giftCardCode.trim()) return;
-    const res = redeemGiftCard(giftCardCode);
-    setGiftMessage({ text: res.message, isSuccess: res.success });
-    if (res.success) {
-      setGiftCardCode('');
-    }
-  };
 
   // Calculate book count per category
   const getCategoryCount = (cat: string) => {
@@ -138,80 +113,6 @@ export const StoreHero: React.FC<StoreHeroProps> = ({
               <span>فريق المنصة والتوظيف</span>
             </button>
           </div>
-        </div>
-
-        {/* 10 USDT Welcome Gift Card Banner Widget */}
-        <div className="max-w-2xl mx-auto mb-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md p-4 sm:p-5 rounded-3xl border border-amber-400/40 dark:border-amber-400/20 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            
-            <div className="flex items-center gap-3.5 text-right w-full sm:w-auto">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                <Gift className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-stone-900 dark:text-white">
-                  <span>قسيمة ترحيبية مجانية بقيمة 10 USDT</span>
-                  <span className="text-[10px] bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full font-black">هدية 🎁</span>
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                  <span className="text-xs text-stone-500 dark:text-stone-400">الكود:</span>
-                  <button 
-                    onClick={handleCopyCode}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 text-amber-900 dark:text-amber-300 font-mono text-xs font-black transition-colors cursor-pointer border border-amber-300 dark:border-amber-700"
-                    title="انقر لنسخ الكود"
-                  >
-                    <span>{defaultPromoCode}</span>
-                    {copiedCode ? <CheckCheck className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-amber-700 dark:text-amber-400" />}
-                  </button>
-
-                  {currentUser.role === 'owner' && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setGiftCardCode('OWNER-INFINITY-VIP');
-                        await copyToClipboard('OWNER-INFINITY-VIP');
-                        setCopiedCode(true);
-                        setTimeout(() => setCopiedCode(false), 2000);
-                      }}
-                      className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-950 font-mono text-xs font-black transition-transform active:scale-95 cursor-pointer shadow-xs border border-amber-400"
-                      title="قسيمتك اللانهائية كمالك"
-                    >
-                      <Crown className="w-3 h-3 text-stone-950" />
-                      <span>OWNER-INFINITY-VIP</span>
-                      <Infinity className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Redeem Form */}
-            <form onSubmit={handleRedeem} className="flex items-center gap-2 w-full sm:w-auto">
-              <input
-                type="text"
-                value={giftCardCode}
-                onChange={(e) => setGiftCardCode(e.target.value)}
-                placeholder="أدخل كود الهدية..."
-                className="w-full sm:w-48 px-3.5 py-2.5 text-xs font-mono rounded-xl bg-white dark:bg-slate-900 border border-stone-300 dark:border-slate-700 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase font-bold"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-black shrink-0 cursor-pointer shadow-sm transition-all"
-              >
-                تفعيل الرصيد
-              </button>
-            </form>
-          </div>
-
-          {giftMessage && (
-            <div className={`mt-3 p-2.5 rounded-xl text-xs font-bold text-center ${
-              giftMessage.isSuccess 
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' 
-                : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
-            }`}>
-              {giftMessage.text}
-            </div>
-          )}
         </div>
 
         {/* Search & Category Filter Suite */}

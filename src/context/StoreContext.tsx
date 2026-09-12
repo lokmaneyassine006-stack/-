@@ -416,7 +416,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [customization, setCustomization] = useState<StoreCustomization>(() => loadStorage('customization', {
     storeName: 'مكتبة معا نحو التغيير',
     storeSubtitle: 'المنصة العالمية للكتب الإلكترونية، الصوتية، والنشر التفاعلي',
-    bannerNotice: '✨ مرحباً بكم في مكتبة "معا نحو التغيير" — استخدم كود CHANGE-2026-USDT10 للحصول على بطاقة هدية 10 USDT!',
+    bannerNotice: '✨ مرحباً بكم في مكتبة "معا نحو التغيير" — المنصة الرسمية للكتب الإلكترونية، الصوتية، والنشر المعتمد.',
     showBanner: true,
     primaryColor: '#0f766e',
     themeMode: 'light',
@@ -706,6 +706,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       console.log(`[StoreContext] Auto-purged fake earnings. Wallet set to real profit: ${netRealBalance} DZD`);
     }
+
+    // Purge free promotional coupon CHANGE-2026-USDT10 if stored
+    setGiftCards((prev) => {
+      const filtered = prev.filter((c) => c.code.toUpperCase() !== 'CHANGE-2026-USDT10');
+      if (filtered.length !== prev.length) {
+        saveStorage('giftCards', filtered);
+        return filtered;
+      }
+      return prev;
+    });
+
+    setCustomization((prev) => {
+      if (prev.bannerNotice && prev.bannerNotice.includes('CHANGE-2026-USDT10')) {
+        const next = {
+          ...prev,
+          bannerNotice: '✨ مرحباً بكم في مكتبة "معا نحو التغيير" — المنصة الرسمية للكتب الإلكترونية، الصوتية، والنشر المعتمد.'
+        };
+        saveStorage('customization', next);
+        return next;
+      }
+      return prev;
+    });
   }, []);
 
   // Handle theme classes on HTML / Body
@@ -1907,6 +1929,10 @@ ${balanceText}${truecallerSeal}
       };
     }
 
+    if (cleanCode === 'CHANGE-2026-USDT10') {
+      return { success: false, message: 'تمت إزالة وإلغاء صلاحية هذه القسيمة المجانية نهائياً.' };
+    }
+
     if (!foundCard) {
       return { success: false, message: 'رمز بطاقة الهدية أو القسيمة غير صحيح أو غير موجود.' };
     }
@@ -2355,7 +2381,7 @@ ${balanceText}${truecallerSeal}
     const defaultCustomization: StoreCustomization = {
       storeName: 'مكتبة معا نحو التغيير',
       storeSubtitle: 'المنصة العالمية للكتب الإلكترونية، الصوتية، والنشر التفاعلي',
-      bannerNotice: '✨ مرحباً بكم في مكتبة "معا نحو التغيير" — استخدم كود CHANGE-2026-USDT10 للحصول على بطاقة هدية 10 USDT!',
+      bannerNotice: '✨ مرحباً بكم في مكتبة "معا نحو التغيير" — المنصة الرسمية للكتب الإلكترونية، الصوتية، والنشر المعتمد.',
       showBanner: true,
       primaryColor: '#0f766e',
       themeMode: 'light',
