@@ -95,6 +95,15 @@ interface StoreContextType {
   updateWalletBalance: (amountDzd: number, reason?: string) => void;
   rewardPromotionBonus: (amountDzd?: number, reason?: string, bookTitle?: string) => { success: boolean; amountDzd: number; newBalance: number; message: string; txRef: string };
   completeTransaction: (txId: string, note?: string) => { success: boolean; message: string };
+  resetWalletToRealProfits: () => {
+    success: boolean;
+    realBalanceDzd: number;
+    realBalanceUsdt: number;
+    totalSalesDzd: number;
+    totalWithdrawalsDzd: number;
+    purgedAmountDzd: number;
+    message: string;
+  };
 
   // BaridiMob & Binance SMS Notification Service (Linked with Truecaller 0652206947)
   smsNotifications: BaridimobSmsNotification[];
@@ -247,28 +256,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Forum state
   const [forumTopics, setForumTopics] = useState<ForumTopic[]>(() => loadStorage('forumTopics', INITIAL_FORUM_TOPICS));
   
-  // Sales Transactions & Linked Operations (BaridiMob & Binance)
+  // Sales Transactions & Linked Operations (BaridiMob & Binance) - Pure Real Sales Only
   const [transactions, setTransactions] = useState<SaleTransaction[]>(() => loadStorage('transactions', [
-    {
-      id: 'tx-bm-structured-1',
-      txRef: 'STR-WD-2026-BM01',
-      bookTitle: 'سند سحب إنشائي معتمد (بريدي موب BaridiMob RIP)',
-      sellerId: 'user-lokmane-owner',
-      sellerName: 'لقمان ياسين أبختي',
-      userId: 'user-lokmane-owner',
-      description: 'سند سحب إنشائي معتمد عبر بريدي موب RIP - مدة التنفيذ: ساعتان ⏱️',
-      type: 'withdrawal',
-      amountDzd: -24000,
-      amountUsdt: 100,
-      method: 'baridimob',
-      status: 'completed',
-      timestamp: '2026-09-11 09:15',
-      date: '2026-09-11',
-      accountDetails: '00799999002847192033',
-      phoneNumber: '0555001122',
-      linkedWithdrawalId: 'wd-bm-1',
-      txHash: '0x9a81b7e42d3c11f0923e78491823901b'
-    },
     {
       id: 'tx-bm-purchase-1',
       txRef: 'TX-BM-2026-8812',
@@ -287,29 +276,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       method: 'baridimob',
       status: 'completed',
       timestamp: '2026-09-10 16:40',
+      date: '2026-09-10',
       accountDetails: '00799999002847192033',
       phoneNumber: '0661223344',
       txHash: '0x438f9021a8d42e718b9c204918491834'
-    },
-    {
-      id: 'tx-bn-structured-1',
-      txRef: 'STR-WD-2026-BN01',
-      bookTitle: 'سند سحب إنشائي معتمد (بينانس Binance TRC20)',
-      sellerId: 'user-lokmane-owner',
-      sellerName: 'لقمان ياسين أبختي',
-      userId: 'user-lokmane-owner',
-      description: 'سند سحب إنشائي معتمد بالدولار الرقمي USDT (Binance TRC20) - مدة التنفيذ: ساعتان ⏱️',
-      type: 'withdrawal',
-      amountDzd: -36000,
-      amountUsdt: 150,
-      method: 'binance',
-      status: 'completed',
-      timestamp: '2026-09-11 10:00',
-      date: '2026-09-11',
-      accountDetails: 'TQ9x7V9uD5hF3X9kP1M4zW7Y8Q2c1vB4N6',
-      cryptoNetwork: 'TRC20',
-      linkedWithdrawalId: 'wd-bn-1',
-      txHash: '0x7e819f20ab31c440d991e204917491823901b8e4'
     },
     {
       id: 'tx-bn-purchase-1',
@@ -329,120 +299,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       method: 'binance',
       status: 'completed',
       timestamp: '2026-09-10 11:20',
+      date: '2026-09-10',
       cryptoNetwork: 'Binance Pay',
       txHash: '0x8f72a6b4c919d380e611894b98c55490a071'
     }
   ]));
   
-  // Withdrawals Linked to BaridiMob & Binance
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>(() => loadStorage('withdrawals', [
-    {
-      id: 'wd-bm-1',
-      referenceCode: 'STR-WD-2026-BM01',
-      authorId: 'user-lokmane-owner',
-      authorName: 'لقمان ياسين أبختي',
-      amountDzd: 24000,
-      amountUsdt: 100,
-      method: 'baridimob',
-      accountDetails: '00799999002847192033',
-      status: 'approved',
-      requestedAt: '2026-09-11 09:15',
-      processedAt: '2026-09-11 10:30',
-      isStructured: true,
-      executionDurationHours: 2,
-      expectedCompletionTime: '11:15 (خلال ساعتين)',
-      beneficiaryName: 'لقمان ياسين أبختي',
-      phoneNumber: '0555001122',
-      adminNote: 'تم التحويل الإنشائي بنجاح عبر بريدي موب وإرسال إشعار SMS للمستفيد.',
-      txHash: '0x9a81b7e42d3c11f0923e78491823901b'
-    },
-    {
-      id: 'wd-bn-1',
-      referenceCode: 'STR-WD-2026-BN01',
-      authorId: 'user-lokmane-owner',
-      authorName: 'لقمان ياسين أبختي',
-      amountDzd: 36000,
-      amountUsdt: 150,
-      method: 'binance',
-      accountDetails: 'TQ9x7V9uD5hF3X9kP1M4zW7Y8Q2c1vB4N6',
-      status: 'approved',
-      requestedAt: '2026-09-11 10:00',
-      processedAt: '2026-09-11 11:10',
-      isStructured: true,
-      executionDurationHours: 2,
-      expectedCompletionTime: '12:00 (خلال ساعتين)',
-      beneficiaryName: 'Lokmane_VIP',
-      cryptoNetwork: 'TRC20',
-      adminNote: 'تم التحويل الفوري لمحفظة بينانس USDT على شبكة TRC20 بنجاح.',
-      txHash: '0x7e819f20ab31c440d991e204917491823901b8e4'
-    },
-    {
-      id: 'wd-1',
-      referenceCode: 'WD-2026-7821A',
-      authorId: 'user-2',
-      authorName: 'أمين بلمختار',
-      amountDzd: 15000,
-      amountUsdt: 62.5,
-      method: 'baridimob',
-      accountDetails: '00799999002134567890',
-      status: 'approved',
-      requestedAt: '2025-02-10 14:00',
-      processedAt: '2025-02-11 09:30',
-      isStructured: true,
-      executionDurationHours: 2,
-      beneficiaryName: 'أمين بلمختار',
-      phoneNumber: '0661223344',
-      adminNote: 'تمت تصفية المستحقات بنجاح عبر بريدي موب.'
-    }
-  ]));
+  // Withdrawals Linked to BaridiMob & Binance - Verified Real Requests Only
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>(() => loadStorage('withdrawals', []));
 
-  // BaridiMob & Binance SMS Notification Service State (Linked to 0652206947)
+  // BaridiMob & Binance SMS Notification Service State - Real verified alerts only
   const [smsNotifications, setSmsNotifications] = useState<BaridimobSmsNotification[]>(() => loadStorage('smsNotifications', [
     {
-      id: 'sms-bn-init-1',
-      referenceCode: 'STR-WD-2026-BN01',
-      type: 'withdrawal',
-      channel: 'binance',
-      recipientPhone: '0652206947',
-      recipientName: 'لقمان ياسين أبختي (Lokmane_VIP)',
-      cryptoAddressOrPayId: 'TQ9x7V9uD5hF3X9kP1M4zW7Y8Q2c1vB4N6',
-      cryptoNetwork: 'TRC20',
-      amountDzd: 36000,
-      amountUsdt: 150,
-      currentBalanceDzd: 161400,
-      sentAt: '2026-09-11 11:10',
-      status: 'delivered',
-      senderId: 'BINANCE',
-      txHash: '0x7e819f20ab31c440d991e204917491823901b8e4',
-      truecallerVerified: true,
-      truecallerCallerId: 'لقمان ياسين أبختي (Lokmane Yassine Abakhti)',
-      truecallerNumber: '0652206947',
-      truecallerCategory: 'بينانس - حساب موثق رسمي (Binance Verified Trader)',
-      messageText: `【Binance】إشعار أمان ومعاملة مالية:
-تم بنجاح تحويل وسحب مالي إنشائي معتمد بمبلغ: 150.00 USDT (~36,000 د.ج)
-الشبكة: Tron (TRC20)
-المعرف / المحفظة: TQ9x7V9uD5hF3X9kP1M4zW7Y8Q2c1vB4N6
-المستفيد: لقمان ياسين أبختي (Lokmane_VIP)
-المرجع: STR-WD-2026-BN01
-مدة المعالجة المعتمدة: ساعتان (120 دقيقة) ⏱️
-التاريخ: 2026-09-11 11:10
-رمز المعاملة (TxHash): 0x7e819f20ab31c440d9...
-الرصيد المتاح: 161,400 د.ج
-🔒 هوية الحساب موثقة عبر Truecaller: 0652206947 (Lokmane Yassine Abakhti - علامة التوثيق الرسمية ✓)
-شكراً لثقتكم بمنصة بينانس العالمية (Binance Official).`
-    },
-    {
-      id: 'sms-bm-init-1',
-      referenceCode: 'STR-WD-2026-BM01',
-      type: 'withdrawal',
+      id: 'sms-bm-real-1',
+      referenceCode: 'TX-BM-2026-8812',
+      type: 'purchase',
       channel: 'baridimob',
       recipientPhone: '0652206947',
       recipientName: 'لقمان ياسين أبختي',
       ripNumber: '00799999002847192033',
-      amountDzd: 24000,
-      amountUsdt: 100,
-      currentBalanceDzd: 161400,
-      sentAt: '2026-09-11 10:30',
+      amountDzd: 1800,
+      amountUsdt: 7.5,
+      currentBalanceDzd: 3600,
+      sentAt: '2026-09-10 16:40',
       status: 'delivered',
       senderId: 'BARIDIMOB',
       truecallerVerified: true,
@@ -450,13 +329,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       truecallerNumber: '0652206947',
       truecallerCategory: 'بريدي موب - حساب مالي رسمي معتمد (BaridiMob Verified)',
       messageText: `Algérie Poste / BaridiMob:
-تم بنجاح تحويل وسحب مالي إنشائي معتمد بمبلغ: 24,000.00 د.ج
-إلى الحساب RIP: 00799999002847192033
-المستفيد: لقمان ياسين أبختي
-المرجع: STR-WD-2026-BM01
-مدة المعالجة المعتمدة: ساعتان (120 دقيقة) ⏱️
-التاريخ: 2026-09-11 10:30
-الرصيد المتاح: 161,400.00 د.ج
+تم بنجاح تحصيل قيمة مبيعات كتاب "معا نحو التغيير" بمبلغ: 1,800.00 د.ج
+المشتري: أمين بلمختار
+المرجع: TX-BM-2026-8812
+التاريخ: 2026-09-10 16:40
+الرصيد الحقيقي للمحفظة: 3,600.00 د.ج
 🔒 تم توثيق الهوية عبر Truecaller للرقم: 0652206947 (Lokmane Yassine Abakhti)
 شكراً لثقتكم بخدمات بريد الجزائر.`
     }
@@ -738,6 +615,81 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => { saveStorage('customization', customization); }, [customization]);
   useEffect(() => { saveStorage('socialLinks', socialLinks); }, [socialLinks]);
   useEffect(() => { saveStorage('security', security); }, [security]);
+
+  // One-time auto-purge of simulated/fake earnings and synchronization of strictly real wallet profit
+  useEffect(() => {
+    const FAKE_TX_IDS = ['tx-bm-structured-1', 'tx-bn-structured-1'];
+    const FAKE_WD_IDS = ['wd-bm-1', 'wd-bn-1', 'wd-1'];
+    const FAKE_SMS_IDS = ['sms-bn-init-1', 'sms-bm-init-1'];
+
+    const hasFakeTx = transactions.some((t) => FAKE_TX_IDS.includes(t.id));
+    const hasFakeWd = withdrawals.some((w) => FAKE_WD_IDS.includes(w.id));
+    const hasFakeSms = smsNotifications.some((s) => FAKE_SMS_IDS.includes(s.id));
+    const isOwner = currentUser.role === 'owner' || currentUser.id === OWNER_USER.id;
+    const hasInflatedBalance = isOwner && currentUser.walletDzd > 50000;
+
+    if (hasFakeTx || hasFakeWd || hasFakeSms || hasInflatedBalance) {
+      const cleanTx = transactions.filter((t) => !FAKE_TX_IDS.includes(t.id));
+      const cleanWd = withdrawals.filter((w) => !FAKE_WD_IDS.includes(w.id));
+      const cleanSms = smsNotifications.filter((s) => !FAKE_SMS_IDS.includes(s.id));
+
+      let ownerRealSales = 0;
+      cleanTx.forEach((tx) => {
+        if (tx.status === 'completed' && tx.type === 'book_purchase') {
+          const isOwnerBook = tx.sellerId === OWNER_USER.id || tx.sellerName?.includes('لقمان ياسين');
+          if (isOwnerBook) {
+            ownerRealSales += (tx.amountDzd || 0);
+          } else if (tx.platformFeeDzd) {
+            ownerRealSales += tx.platformFeeDzd;
+          }
+        } else if (tx.status === 'completed' && (tx.type === 'promotion_reward' || tx.type === 'deposit')) {
+          if (tx.buyerId === OWNER_USER.id || tx.userId === OWNER_USER.id) {
+            ownerRealSales += (tx.amountDzd || 0);
+          }
+        }
+      });
+
+      const ownerRealWd = cleanWd
+        .filter((w) => w.authorId === OWNER_USER.id && (w.status === 'approved' || w.status === 'completed'))
+        .reduce((sum, w) => sum + (w.amountDzd || 0), 0);
+
+      const netRealBalance = Math.max(0, ownerRealSales - ownerRealWd);
+
+      setTransactions(cleanTx);
+      saveStorage('transactions', cleanTx);
+
+      setWithdrawals(cleanWd);
+      saveStorage('withdrawals', cleanWd);
+
+      setSmsNotifications(cleanSms);
+      saveStorage('smsNotifications', cleanSms);
+
+      setCurrentUserState((prev) => {
+        const next = { ...prev, walletDzd: netRealBalance };
+        saveStorage('currentUser', next);
+        return next;
+      });
+
+      setAllUsers((prev) => {
+        const next = prev.map((u) => {
+          if (u.id === OWNER_USER.id || u.id === SAAD_BOUACHA_USER.id) {
+            return { ...u, walletDzd: netRealBalance };
+          }
+          return u;
+        });
+        saveStorage('allUsers', next);
+        return next;
+      });
+
+      setVirtualCards((prev) => {
+        const next = prev.map((c) => ({ ...c, balance: netRealBalance }));
+        saveStorage('virtualCards', next);
+        return next;
+      });
+
+      console.log(`[StoreContext] Auto-purged fake earnings. Wallet set to real profit: ${netRealBalance} DZD`);
+    }
+  }, []);
 
   // Handle theme classes on HTML / Body
   useEffect(() => {
@@ -2168,6 +2120,90 @@ ${balanceText}${truecallerSeal}
     };
   }, [currentUser, customization]);
 
+  // Dedicated Reset Wallet Engine: Purges fake/simulated earnings and recalculates strictly real profits
+  const resetWalletToRealProfits = useCallback(() => {
+    const FAKE_TX_IDS = ['tx-bm-structured-1', 'tx-bn-structured-1'];
+    const FAKE_WD_IDS = ['wd-bm-1', 'wd-bn-1', 'wd-1'];
+    const FAKE_SMS_IDS = ['sms-bn-init-1', 'sms-bm-init-1'];
+
+    const cleanTx = transactions.filter((t) => !FAKE_TX_IDS.includes(t.id));
+    const cleanWd = withdrawals.filter((w) => !FAKE_WD_IDS.includes(w.id));
+    const cleanSms = smsNotifications.filter((s) => !FAKE_SMS_IDS.includes(s.id));
+
+    let totalSalesDzd = 0;
+    cleanTx.forEach((tx) => {
+      if (tx.status === 'completed' && tx.type === 'book_purchase') {
+        const isOwnerBook = tx.sellerId === OWNER_USER.id || tx.sellerName?.includes('لقمان ياسين');
+        if (currentUser.id === OWNER_USER.id || currentUser.role === 'owner') {
+          if (isOwnerBook) {
+            totalSalesDzd += (tx.amountDzd || 0);
+          } else if (tx.platformFeeDzd) {
+            totalSalesDzd += tx.platformFeeDzd;
+          }
+        } else {
+          if (tx.sellerId === currentUser.id) {
+            totalSalesDzd += (tx.authorNetDzd || tx.amountDzd || 0);
+          }
+        }
+      } else if (tx.status === 'completed' && (tx.type === 'promotion_reward' || tx.type === 'deposit')) {
+        if (tx.buyerId === currentUser.id || tx.userId === currentUser.id) {
+          totalSalesDzd += (tx.amountDzd || 0);
+        }
+      }
+    });
+
+    const userWithdrawals = cleanWd.filter(
+      (w) => w.authorId === currentUser.id && (w.status === 'approved' || w.status === 'completed')
+    );
+    const totalWithdrawalsDzd = userWithdrawals.reduce((sum, w) => sum + (w.amountDzd || 0), 0);
+
+    const realBalanceDzd = Math.max(0, totalSalesDzd - totalWithdrawalsDzd);
+    const realBalanceUsdt = +(((realBalanceDzd || 0) / (customization?.exchangeRateUsdtToDzd || 240)) || 0).toFixed(2);
+    const purgedAmountDzd = Math.max(0, currentUser.walletDzd - realBalanceDzd);
+
+    setCurrentUserState((prev) => {
+      const next = { ...prev, walletDzd: realBalanceDzd };
+      saveStorage('currentUser', next);
+      return next;
+    });
+
+    setAllUsers((prev) => {
+      const next = prev.map((u) => {
+        if (u.id === currentUser.id || ((currentUser.role === 'owner') && (u.id === OWNER_USER.id || u.id === SAAD_BOUACHA_USER.id))) {
+          return { ...u, walletDzd: realBalanceDzd };
+        }
+        return u;
+      });
+      saveStorage('allUsers', next);
+      return next;
+    });
+
+    setTransactions(cleanTx);
+    saveStorage('transactions', cleanTx);
+
+    setWithdrawals(cleanWd);
+    saveStorage('withdrawals', cleanWd);
+
+    setSmsNotifications(cleanSms);
+    saveStorage('smsNotifications', cleanSms);
+
+    setVirtualCards((prev) => {
+      const next = prev.map((c) => ({ ...c, balance: realBalanceDzd }));
+      saveStorage('virtualCards', next);
+      return next;
+    });
+
+    return {
+      success: true,
+      realBalanceDzd,
+      realBalanceUsdt,
+      totalSalesDzd,
+      totalWithdrawalsDzd,
+      purgedAmountDzd,
+      message: `تمت تصفية كافة الأرباح والبيانات الوهمية بنجاح واعتماد الرصيد الحقيقي فقط (${realBalanceDzd.toLocaleString()} د.ج).`
+    };
+  }, [transactions, withdrawals, smsNotifications, currentUser, customization]);
+
   const generateGiftCardVoucher = useCallback((amountUsdt = 10, isInfinite = false, ownerOnly = false, description?: string) => {
     const randPart = Math.random().toString(36).substring(2, 8).toUpperCase();
     const newCode = isInfinite ? `OWNER-INF-${randPart}` : `CHANGE-2026-${randPart}`;
@@ -2311,6 +2347,7 @@ ${balanceText}${truecallerSeal}
         updateWalletBalance,
         rewardPromotionBonus,
         completeTransaction,
+        resetWalletToRealProfits,
         smsNotifications,
         sendBaridimobSms,
         sendBinanceSms,

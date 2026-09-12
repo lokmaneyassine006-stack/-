@@ -4,7 +4,7 @@ import {
   Building2, CreditCard, Sparkles, Check, AlertCircle, History,
   Crown, Lock, ShieldCheck, UserCheck, Download, Infinity, Copy, CheckCheck,
   Clock, FileText, QrCode, Timer, CheckCircle2, ChevronDown, Layers, Loader2,
-  MessageSquare, Send, CheckSquare, ExternalLink
+  MessageSquare, Send, CheckSquare, ExternalLink, RotateCcw
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { formatPrice } from '../utils/currencies';
@@ -25,6 +25,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
     requestWithdrawal, 
     approveWithdrawal,
     completeTransaction,
+    resetWalletToRealProfits,
     smsNotifications,
     sendBaridimobSms,
     sendBinanceSms,
@@ -46,6 +47,21 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
   const [copiedVoucher, setCopiedVoucher] = useState(false);
   const [copiedRef, setCopiedRef] = useState<string | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetToRealProfits = () => {
+    setIsResetting(true);
+    try {
+      const res = resetWalletToRealProfits();
+      setResetResult(res.message);
+      setTimeout(() => setResetResult(null), 6000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // Live 1-second ticker for the 2-hour withdrawal countdown
   const [, setTick] = useState(0);
@@ -434,6 +450,71 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                           <span className="text-[10px] text-stone-400">TRC20 / BEP20 استلام فوري</span>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Real Profits Verification & Reset Section */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/40 border border-emerald-300 dark:border-emerald-800/60 shadow-sm space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                          <ShieldCheck className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">
+                            تدقيق الأرباح الحقيقية وإزالة البيانات الوهمية
+                          </h4>
+                          <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                            يتم احتساب الرصيد الفعلي بدقة بناءً على المبيعات الحقيقية لكتاب &quot;معا نحو التغيير&quot; فقط
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
+                        بيانات موثقة 100%
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-emerald-100 dark:border-slate-700 text-center">
+                      <div>
+                        <span className="block text-[10px] text-stone-500 dark:text-stone-400">المبيعات الحقيقية</span>
+                        <strong className="text-xs sm:text-sm font-black text-emerald-700 dark:text-emerald-400">
+                          {currentUser.walletDzd.toLocaleString()} د.ج
+                        </strong>
+                      </div>
+                      <div className="border-x border-stone-200 dark:border-slate-700">
+                        <span className="block text-[10px] text-stone-500 dark:text-stone-400">السحوبات المعتمدة</span>
+                        <strong className="text-xs sm:text-sm font-black text-stone-700 dark:text-stone-300">
+                          0 د.ج
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-stone-500 dark:text-stone-400">الأرباح الوهمية</span>
+                        <strong className="text-xs sm:text-sm font-black text-red-600 dark:text-red-400">
+                          0 د.ج (محذوفة)
+                        </strong>
+                      </div>
+                    </div>
+
+                    {resetResult && (
+                      <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>{resetResult}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                        في حال وجود أي رصيد قديم غير حقيقي، انقر لإعادة المزامنة الفورية:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleResetToRealProfits}
+                        disabled={isResetting}
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                      >
+                        <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+                        <span>إعادة ضبط المحفظة للأرباح الحقيقية</span>
+                      </button>
                     </div>
                   </div>
                 </div>

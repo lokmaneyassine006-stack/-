@@ -55,14 +55,18 @@ export const SalesAnalyticsCharts: React.FC<SalesAnalyticsChartsProps> = ({
 
   const exchangeRate = customization?.exchangeRateUsdtToDzd || 240;
 
-  // Filter purchase transactions
+  // Filter purchase transactions - Strictly real completed purchases only
   const purchaseTransactions = useMemo(() => {
     return transactions.filter(
-      (t) => t.type === 'book_purchase' || (t.amountDzd > 0 && t.type !== 'withdrawal')
+      (t) =>
+        !t.id.includes('tx-bm-structured-1') &&
+        !t.id.includes('tx-bn-structured-1') &&
+        (t.type === 'book_purchase' || (t.amountDzd > 0 && t.type !== 'withdrawal')) &&
+        t.status === 'completed'
     );
   }, [transactions]);
 
-  // Aggregate Daily Sales Data for the chosen timeframe
+  // Aggregate Daily Sales Data for the chosen timeframe strictly from real records
   const dailyChartData = useMemo(() => {
     const daysCount = parseInt(dailyTimeframe, 10);
     const result: Array<{
@@ -96,24 +100,6 @@ export const SalesAnalyticsCharts: React.FC<SalesAnalyticsChartsProps> = ({
       }
     });
 
-    // Realistic baseline volume for demo consistency
-    const baselineDailyPattern: Record<number, { bm: number; bn: number; orders: number }> = {
-      0: { bm: 14400, bn: 7200, orders: 12 }, // Day 0 (2026-09-12)
-      1: { bm: 18000, bn: 9000, orders: 15 }, // Day 1 (2026-09-11)
-      2: { bm: 12600, bn: 7200, orders: 11 }, // Day 2 (2026-09-10)
-      3: { bm: 16200, bn: 10800, orders: 15 }, // Day 3 (2026-09-09)
-      4: { bm: 10800, bn: 5400, orders: 9 },  // Day 4 (2026-09-08)
-      5: { bm: 19800, bn: 12600, orders: 18 }, // Day 5 (2026-09-07)
-      6: { bm: 14400, bn: 9000, orders: 13 }, // Day 6 (2026-09-06)
-      7: { bm: 21600, bn: 14400, orders: 20 }, // Day 7 (2026-09-05)
-      8: { bm: 12600, bn: 7200, orders: 11 }, // Day 8 (2026-09-04)
-      9: { bm: 16200, bn: 9000, orders: 14 }, // Day 9 (2026-09-03)
-      10: { bm: 14400, bn: 7200, orders: 12 }, // Day 10 (2026-09-02)
-      11: { bm: 18000, bn: 10800, orders: 16 }, // Day 11 (2026-09-01)
-      12: { bm: 12600, bn: 5400, orders: 10 },
-      13: { bm: 19800, bn: 12600, orders: 18 },
-    };
-
     for (let i = daysCount - 1; i >= 0; i--) {
       const d = new Date(baseDate);
       d.setDate(d.getDate() - i);
@@ -125,25 +111,18 @@ export const SalesAnalyticsCharts: React.FC<SalesAnalyticsChartsProps> = ({
 
       const dayTransactions = txByDate[dateKey] || [];
 
-      // Calculate actual transactions for this day
-      let actualBm = 0;
-      let actualBn = 0;
-      let actualOther = 0;
-      let actualOrders = dayTransactions.length;
+      // Calculate strictly actual transactions for this day - No mock baselines
+      let baridimobDzd = 0;
+      let binanceDzd = 0;
+      let otherDzd = 0;
+      const ordersCount = dayTransactions.length;
 
       dayTransactions.forEach((tx) => {
         const amt = tx.amountDzd || 0;
-        if (tx.method === 'baridimob') actualBm += amt;
-        else if (tx.method === 'binance') actualBn += amt;
-        else actualOther += amt;
+        if (tx.method === 'baridimob') baridimobDzd += amt;
+        else if (tx.method === 'binance') binanceDzd += amt;
+        else otherDzd += amt;
       });
-
-      // Baseline synthesis if no transaction was recorded on this past date
-      const pattern = baselineDailyPattern[i % 14] || { bm: 10800, bn: 7200, orders: 10 };
-      const baridimobDzd = actualBm > 0 ? actualBm : pattern.bm;
-      const binanceDzd = actualBn > 0 ? actualBn : pattern.bn;
-      const otherDzd = actualOther;
-      const ordersCount = actualOrders > 0 ? actualOrders : pattern.orders;
 
       const totalDzd = baridimobDzd + binanceDzd + otherDzd;
       const totalUsdt = parseFloat((totalDzd / exchangeRate).toFixed(2));
@@ -164,58 +143,59 @@ export const SalesAnalyticsCharts: React.FC<SalesAnalyticsChartsProps> = ({
     return result;
   }, [purchaseTransactions, dailyTimeframe, exchangeRate]);
 
-  // Aggregate Monthly Sales Data for 2026
+  // Aggregate Monthly Sales Data for 2026 strictly from real records
   const monthlyChartData = useMemo(() => {
-    const months = [
-      { name: 'يناير', short: '01', bm: 85000, bn: 42000, other: 12000, orders: 78, growth: 12.5 },
-      { name: 'فبراير', short: '02', bm: 96000, bn: 51000, other: 15000, orders: 92, growth: 16.0 },
-      { name: 'مارس', short: '03', bm: 125000, bn: 68000, other: 18000, orders: 118, growth: 30.2 },
-      { name: 'أبريل', short: '04', bm: 142000, bn: 79000, other: 22000, orders: 135, growth: 15.6 },
-      { name: 'ماي', short: '05', bm: 168000, bn: 98000, other: 25000, orders: 160, growth: 19.3 },
-      { name: 'جوان', short: '06', bm: 195000, bn: 115000, other: 28000, orders: 184, growth: 17.1 },
-      { name: 'جويلية', short: '07', bm: 220000, bn: 138000, other: 32000, orders: 210, growth: 15.9 },
-      { name: 'أوت', short: '08', bm: 258000, bn: 162000, other: 35000, orders: 245, growth: 17.6 },
-      { name: 'سبتمبر', short: '09', bm: 285000, bn: 182000, other: 38000, orders: 280, growth: 11.2 },
+    const monthsConfig = [
+      { name: 'يناير', short: '01' },
+      { name: 'فبراير', short: '02' },
+      { name: 'مارس', short: '03' },
+      { name: 'أبريل', short: '04' },
+      { name: 'ماي', short: '05' },
+      { name: 'جوان', short: '06' },
+      { name: 'جويلية', short: '07' },
+      { name: 'أوت', short: '08' },
+      { name: 'سبتمبر', short: '09' },
     ];
 
-    // Compute live September additions from store transactions
-    let liveSepBm = 0;
-    let liveSepBn = 0;
-    let liveSepOther = 0;
-    let liveSepOrders = 0;
+    const monthlyAgg: Record<string, { bm: number; bn: number; other: number; orders: number }> = {};
+    monthsConfig.forEach((m) => {
+      monthlyAgg[m.short] = { bm: 0, bn: 0, other: 0, orders: 0 };
+    });
 
     purchaseTransactions.forEach((tx) => {
       const dateStr = tx.date || tx.timestamp || '';
-      if (dateStr.includes('2026-09')) {
-        liveSepOrders++;
+      const match = dateStr.match(/2026-(\d{2})/);
+      const mShort = match ? match[1] : (dateStr.includes('-09-') ? '09' : '09');
+      if (monthlyAgg[mShort]) {
         const amt = tx.amountDzd || 0;
-        if (tx.method === 'baridimob') liveSepBm += amt;
-        else if (tx.method === 'binance') liveSepBn += amt;
-        else liveSepOther += amt;
+        monthlyAgg[mShort].orders += 1;
+        if (tx.method === 'baridimob') monthlyAgg[mShort].bm += amt;
+        else if (tx.method === 'binance') monthlyAgg[mShort].bn += amt;
+        else monthlyAgg[mShort].other += amt;
       }
     });
 
-    return months.map((m) => {
-      const isSep = m.short === '09';
-      const bm = isSep ? m.bm + liveSepBm : m.bm;
-      const bn = isSep ? m.bn + liveSepBn : m.bn;
-      const other = isSep ? m.other + liveSepOther : m.other;
-      const totalDzd = bm + bn + other;
+    return monthsConfig.map((m, idx) => {
+      const data = monthlyAgg[m.short] || { bm: 0, bn: 0, other: 0, orders: 0 };
+      const totalDzd = data.bm + data.bn + data.other;
       const totalUsdt = parseFloat((totalDzd / exchangeRate).toFixed(2));
-      const orders = isSep ? m.orders + liveSepOrders : m.orders;
+
+      const prevData = idx > 0 ? monthlyAgg[monthsConfig[idx - 1].short] : null;
+      const prevTotal = prevData ? prevData.bm + prevData.bn + prevData.other : 0;
+      const growth = prevTotal > 0 ? parseFloat((((totalDzd - prevTotal) / prevTotal) * 100).toFixed(1)) : (totalDzd > 0 ? 100 : 0);
 
       return {
         month: m.name,
         monthKey: m.short,
         totalDzd,
         totalUsdt,
-        baridimobDzd: bm,
-        binanceDzd: bn,
-        otherDzd: other,
-        baridimobUsdt: parseFloat((bm / exchangeRate).toFixed(2)),
-        binanceUsdt: parseFloat((bn / exchangeRate).toFixed(2)),
-        ordersCount: orders,
-        growth: m.growth,
+        baridimobDzd: data.bm,
+        binanceDzd: data.bn,
+        otherDzd: data.other,
+        baridimobUsdt: parseFloat((data.bm / exchangeRate).toFixed(2)),
+        binanceUsdt: parseFloat((data.bn / exchangeRate).toFixed(2)),
+        ordersCount: data.orders,
+        growth,
       };
     });
   }, [purchaseTransactions, exchangeRate]);
@@ -239,21 +219,21 @@ export const SalesAnalyticsCharts: React.FC<SalesAnalyticsChartsProps> = ({
       {
         name: 'بريدي موب (BaridiMob RIP)',
         value: bmTotal,
-        percentage: Math.round((bmTotal / grandTotal) * 100),
+        percentage: grandTotal > 0 ? Math.round((bmTotal / grandTotal) * 100) : (bmTotal > 0 ? 100 : 0),
         color: METHOD_COLORS.baridimob,
         icon: Building2,
       },
       {
         name: 'بينانس (Binance Pay USDT)',
         value: bnTotal,
-        percentage: Math.round((bnTotal / grandTotal) * 100),
+        percentage: grandTotal > 0 ? Math.round((bnTotal / grandTotal) * 100) : (bnTotal > 0 ? 100 : 0),
         color: METHOD_COLORS.binance,
         icon: Zap,
       },
       {
         name: 'البطاقة الذهبية / CCP',
         value: cibTotal,
-        percentage: Math.round((cibTotal / grandTotal) * 100),
+        percentage: grandTotal > 0 ? Math.round((cibTotal / grandTotal) * 100) : (cibTotal > 0 ? 100 : 0),
         color: METHOD_COLORS.cib_ccp,
         icon: CreditCard,
       },
@@ -301,14 +281,18 @@ export const SalesAnalyticsCharts: React.FC<SalesAnalyticsChartsProps> = ({
               <BarChart2 className="w-5 h-5" />
             </span>
             <div>
-              <h3 className="font-black text-sm sm:text-base text-stone-900 dark:text-white flex items-center gap-2">
+              <h3 className="font-black text-sm sm:text-base text-stone-900 dark:text-white flex items-center gap-2 flex-wrap">
                 <span>التحليلات والرسوم البيانية لمبيعات المنصة</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
                   Recharts v2
                 </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  أرباح حقيقية موثقة 100%
+                </span>
               </h3>
               <p className="text-xs text-stone-500 dark:text-stone-400">
-                متابعة تفصيلية للمبيعات اليومية والشهرية وتوزيع وسائل الدفع (بريدي موب وبينانس)
+                متابعة دقيقة ومباشرة للمبيعات الفعلية المعتمدة فقط خالية تماماً من أي بيانات تقديرية أو وهمية
               </p>
             </div>
           </div>

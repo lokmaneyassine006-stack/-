@@ -38,13 +38,29 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     generateGiftCardVoucher,
     withdrawals,
     approveWithdrawal,
-    rejectWithdrawal
+    rejectWithdrawal,
+    resetWalletToRealProfits
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<'stats' | 'settings' | 'payment_accounts' | 'withdrawals' | 'vouchers' | 'security' | 'sms'>('stats');
   const [copiedVoucherCode, setCopiedVoucherCode] = useState<string | null>(null);
   const [voucherMsg, setVoucherMsg] = useState<{ text: string; success: boolean } | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState<string | null>(null);
+  const [adminResetMsg, setAdminResetMsg] = useState<string | null>(null);
+  const [isAdminResetting, setIsAdminResetting] = useState(false);
+
+  const handleAdminResetRealProfits = () => {
+    setIsAdminResetting(true);
+    try {
+      const res = resetWalletToRealProfits();
+      setAdminResetMsg(res.message);
+      setTimeout(() => setAdminResetMsg(null), 6000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAdminResetting(false);
+    }
+  };
 
   // 1-second ticker for live countdown
   const [, setTick] = useState(0);
@@ -267,6 +283,45 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   <span className="text-[10px] text-emerald-600 block mt-1">نقاشات حوارية</span>
                 </div>
               </div>
+
+              {/* Real Profits Verification & Reset Control */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-amber-500/10 border border-emerald-500/30 dark:border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 rounded-xl bg-emerald-600 text-white shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white flex items-center gap-1.5">
+                      <span>إدارة تدقيق الأرباح الحقيقية وإزالة الأرباح الوهمية</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        معتمد 100%
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-stone-600 dark:text-stone-400">
+                      رصيد الخزينة الحالي ({currentUser.walletDzd.toLocaleString()} د.ج) يعكس حصرياً مبيعات كتاب &quot;معا نحو التغيير&quot; الحقيقية دون أي تضخيم.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleAdminResetRealProfits}
+                    disabled={isAdminResetting}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isAdminResetting ? 'animate-spin' : ''}`} />
+                    <span>إعادة ضبط المحفظة للأرباح الحقيقية</span>
+                  </button>
+                </div>
+              </div>
+
+              {adminResetMsg && (
+                <div className="p-3 rounded-2xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>{adminResetMsg}</span>
+                </div>
+              )}
 
               {/* Recharts Sales Analytics: Daily, Monthly, and Payment Distribution */}
               <SalesAnalyticsCharts 
