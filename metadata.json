@@ -1,0 +1,6 @@
+{
+  "name": "مكتبة معا نحو التغيير",
+  "description": "متجر ومنصة كتب إلكترونية وصوتية متكاملة تتيح شراء ونشر الكتب، الترجمة متعددة اللغات، الدفع عبر بينانس وبريدي موب، إدارة الحقوق، ومكتب إدارة المنصة للمالك لقمان ياسين أبختي.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
