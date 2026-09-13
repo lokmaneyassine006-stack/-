@@ -272,7 +272,11 @@ const MainStoreContent: React.FC = () => {
 
       {/* 9.5 Post-Purchase & Platform Promotion Modal */}
       {(activeModal === 'promo' || activeModal === 'promote' || activeModal === 'referral') && (
-        <PurchasePromotionTool onClose={() => setActiveModal(null)} />
+        <PurchasePromotionTool
+          onClose={() => setActiveModal(null)}
+          onQuickBinance={(b) => { setActiveModal(null); handleOpenQuickBinance(b); }}
+          onQuickBaridiMob={(b) => { setActiveModal(null); handleOpenQuickBaridiMob(b); }}
+        />
       )}
 
       {/* 10. Shopping Cart Side Drawer */}

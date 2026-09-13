@@ -809,6 +809,8 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
               <PurchasePromotionTool
                 booksPurchased={[book]}
                 isEmbedded={true}
+                onQuickBinance={onQuickBinance}
+                onQuickBaridiMob={onQuickBaridiMob}
               />
             </div>
           )}

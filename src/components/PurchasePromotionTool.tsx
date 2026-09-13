@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Share2, Copy, Check, Sparkles, Gift, Download, ExternalLink, 
   Award, ArrowRight, MessageCircle, Send, Globe, QrCode, CheckCircle2,
-  TrendingUp, Users, HeartHandshake, ShieldCheck, Zap, Coins, Wallet
+  TrendingUp, Users, HeartHandshake, ShieldCheck, Zap, Coins, Wallet,
+  Crown, Lock, Unlock, ShieldAlert, BookOpen, AlertCircle, RefreshCw,
+  Building2, ArrowUpRight, CheckCheck, ChevronDown, ChevronUp
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useStore } from '../context/StoreContext';
@@ -14,6 +16,8 @@ interface PurchasePromotionToolProps {
   txRef?: string;
   onClose?: () => void;
   isEmbedded?: boolean;
+  onQuickBinance?: (book: Book) => void;
+  onQuickBaridiMob?: (book: Book) => void;
 }
 
 export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
@@ -21,8 +25,24 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
   txRef,
   onClose,
   isEmbedded = false,
+  onQuickBinance,
+  onQuickBaridiMob,
 }) => {
-  const { currentUser, customization, updateWalletBalance, rewardPromotionBonus, lastPurchasedPromotion, setActiveModal } = useStore();
+  const { 
+    books,
+    transactions,
+    currentUser, 
+    customization, 
+    updateWalletBalance, 
+    rewardPromotionBonus, 
+    lastPurchasedPromotion, 
+    setActiveModal,
+    hasPurchasedOwnerBook,
+    getOwnerBooks,
+    processPurchase,
+    paymentAccounts
+  } = useStore();
+
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedPitch, setCopiedPitch] = useState(false);
@@ -32,6 +52,8 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
   const [bonusAlert, setBonusAlert] = useState<{ message: string; amount: number; balance: number } | null>(null);
   const [promotionsCount, setPromotionsCount] = useState(1);
   const [totalPromotionsEarned, setTotalPromotionsEarned] = useState(200);
+  const [isProcessingBuy, setIsProcessingBuy] = useState(false);
+  const [buyFeedback, setBuyFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const effectiveBooks = booksPurchased.length > 0 ? booksPurchased : (lastPurchasedPromotion?.books || []);
@@ -51,98 +73,246 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
   // Promotional Share Messages
   const promotionalPitch = `📚 أنصحكم بقراءة: "${bookTitle}"\n\nلقد قمت باقتنائه وتجربته عبر منصة "${storeName}" الرسمية لنشر وتوزيع الكتب برئاسة ${presidentName}.\n\n🎁 استخدم الرابط التالي للحصول على خصم 20% ورصيد هدية ترحيبي:\n${referralUrl}\n\nكود الخصم المعتمد: ${promoDiscountCode}`;
 
-  // Trigger celebratory confetti once mounted and auto-copy promotional link
+  // Check mandatory owner book purchase rule
+  const isOwner = currentUser.role === 'owner' || currentUser.id === 'user-lokmane-owner';
+  const ownerBooks = getOwnerBooks();
+  const isMandatoryRuleActive = customization?.mandatoryOwnerBookPurchaseForPromotion !== false;
+  const isVerifiedPromoter = isOwner || !isMandatoryRuleActive || hasPurchasedOwnerBook(currentUser.id);
+
+  // Selected owner book for direct purchase tool
+  const [selectedOwnerBookId, setSelectedOwnerBookId] = useState<string>(() => ownerBooks[0]?.id || 'book-owner-1');
+  const selectedOwnerBook = ownerBooks.find((b) => b.id === selectedOwnerBookId) || ownerBooks[0];
+
+  // Collapsible view of owner books showcase if already verified
+  const [showOwnerBooksShowcase, setShowOwnerBooksShowcase] = useState(!isVerifiedPromoter);
+
+  // Find verified transaction if user already bought
+  const verifiedTx = transactions.find((tx) => 
+    (tx.buyerId === currentUser.id || tx.userId === currentUser.id || (currentUser.email && tx.buyerEmail === currentUser.email)) &&
+    (!tx.status || tx.status === 'completed') &&
+    (ownerBooks.some((b) => b.id === tx.bookId) || tx.sellerId === 'user-lokmane-owner' || tx.sellerName?.includes('لقمان ياسين'))
+  );
+  const verifiedBook = verifiedTx ? (books.find((b) => b.id === verifiedTx.bookId) || ownerBooks[0]) : (isOwner ? ownerBooks[0] : null);
+
+  // Trigger celebratory confetti once mounted if verified
   useEffect(() => {
-    try {
-      confetti({
-        particleCount: 85,
-        spread: 75,
-        origin: { y: 0.6 },
-        colors: ['#0f766e', '#d97706', '#10b981', '#f59e0b', '#3b82f6'],
+    if (isVerifiedPromoter) {
+      try {
+        confetti({
+          particleCount: 85,
+          spread: 75,
+          origin: { y: 0.6 },
+          colors: ['#0f766e', '#d97706', '#10b981', '#f59e0b', '#3b82f6'],
+        });
+      } catch {
+        // ignore
+      }
+    }
+  }, [isVerifiedPromoter]);
+
+  // Handle direct wallet purchase of owner's book
+  const handleBuyOwnerBookWallet = () => {
+    if (!selectedOwnerBook) return;
+    if (currentUser.walletDzd < selectedOwnerBook.priceDzd) {
+      setBuyFeedback({
+        success: false,
+        message: `⚠️ رصيد محفظتك الحالي (${currentUser.walletDzd.toLocaleString()} د.ج) غير كافٍ لاقتناء الكتاب المطلوب (${selectedOwnerBook.priceDzd.toLocaleString()} د.ج). يمكنك شحن المحفظة أو الدفع الفوري عبر بريدي موب.`
       });
-    } catch {
-      // ignore
+      return;
     }
 
-    // Attempt safe background copy only if document has focus
-    if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && document.hasFocus()) {
-      copyToClipboard(promotionalPitch).then((success) => {
-        if (success) {
-          setAutoCopied(true);
-          setTimeout(() => setAutoCopied(false), 5000);
+    setIsProcessingBuy(true);
+    try {
+      const res = processPurchase([selectedOwnerBook.id], 'wallet');
+      if (res.success) {
+        setBuyFeedback({
+          success: true,
+          message: `🎉 مبارك! تم اقتناء كتاب المالك «${selectedOwnerBook.title}» بنجاح! تم استيفاء شرط الشراء الإجباري وتفعيل رخصة الترويج وروابط الأرباح بالكامل.`
+        });
+        setShowOwnerBooksShowcase(false);
+        try {
+          confetti({
+            particleCount: 130,
+            spread: 90,
+            origin: { y: 0.5 }
+          });
+        } catch {}
+      } else {
+        setBuyFeedback({ success: false, message: res.message });
+      }
+    } finally {
+      setIsProcessingBuy(false);
+    }
+  };
+
+  // Handle BaridiMob purchase
+  const handleBuyOwnerBookBaridiMob = () => {
+    if (!selectedOwnerBook) return;
+    if (onQuickBaridiMob) {
+      onQuickBaridiMob(selectedOwnerBook);
+    } else {
+      setIsProcessingBuy(true);
+      setTimeout(() => {
+        const res = processPurchase([selectedOwnerBook.id], 'baridimob');
+        setIsProcessingBuy(false);
+        if (res.success) {
+          setBuyFeedback({
+            success: true,
+            message: `🎉 تم تأكيد اقتناء «${selectedOwnerBook.title}» عبر بريدي موب وتفعيل رخصة الترويج بنجاح!`
+          });
+          setShowOwnerBooksShowcase(false);
         }
-      }).catch(() => {});
+      }, 700);
     }
-  }, [promotionalPitch]);
+  };
 
-  // Give Instant Promotion Reward (200 DZD credited directly to wallet)
-  const rewardSharingBonus = (actionLabel = 'مشاركة الرابط والترويج للمنصة') => {
-    if (!currentUser) return;
-    const bonusAmount = 200;
-    const res = rewardPromotionBonus(bonusAmount, `مكافأة ترويج: ${actionLabel}`, bookTitle);
-    setPromotionsCount((prev) => prev + 1);
-    setTotalPromotionsEarned((prev) => prev + bonusAmount);
-    setBonusAlert({
-      message: `🎉 تهانينا! تم إيداع مبلغ الترويج (+${bonusAmount.toLocaleString()} د.ج) في محفظتك الإلكترونية بنجاح!`,
-      amount: bonusAmount,
-      balance: res.newBalance
-    });
-    try {
-      confetti({
-        particleCount: 65,
-        spread: 60,
-        origin: { y: 0.65 },
+  // Handle Binance Pay purchase
+  const handleBuyOwnerBookBinance = () => {
+    if (!selectedOwnerBook) return;
+    if (onQuickBinance) {
+      onQuickBinance(selectedOwnerBook);
+    } else {
+      setIsProcessingBuy(true);
+      setTimeout(() => {
+        const res = processPurchase([selectedOwnerBook.id], 'binance');
+        setIsProcessingBuy(false);
+        if (res.success) {
+          setBuyFeedback({
+            success: true,
+            message: `🎉 تم تأكيد اقتناء «${selectedOwnerBook.title}» عبر بينانس باي وتفعيل رخصة الترويج بنجاح!`
+          });
+          setShowOwnerBooksShowcase(false);
+        }
+      }, 700);
+    }
+  };
+
+  // Reward user bonus for promotion actions
+  const rewardSharingBonus = (actionDesc: string) => {
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: يتطلب الحصول على مكافأة الترويج (+200 د.ج) استيفاء شرط الشراء الإجباري لأحد كتب المالك (أ. لقمان ياسين أبختي) أولاً عبر الأداة أعلاه.'
       });
-    } catch {
-      // ignore
+      setShowOwnerBooksShowcase(true);
+      return;
     }
-    setTimeout(() => {
-      setBonusAlert(null);
-    }, 6000);
+
+    const result = rewardPromotionBonus(200, `مكافأة مشاركة وترويج المنصة (${actionDesc})`, bookTitle);
+    if (result.success) {
+      setBonusAlert({
+        message: result.message,
+        amount: result.amountDzd,
+        balance: result.newBalance
+      });
+      setPromotionsCount((prev) => prev + 1);
+      setTotalPromotionsEarned((prev) => prev + result.amountDzd);
+    } else {
+      setBuyFeedback({
+        success: false,
+        message: result.message
+      });
+    }
   };
 
-  const handleCopyLink = async () => {
-    await copyToClipboard(referralUrl);
+  const handleCopyLink = () => {
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: رابط الإحالة مقيد حتى استيفاء شرط الشراء الإجباري لأحد كتب المالك أعلاه.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
+    copyToClipboard(referralUrl);
     setCopiedLink(true);
-    rewardSharingBonus('نسخ ومشاركة رابط الإحالة الترويجي');
-    setTimeout(() => setCopiedLink(false), 2500);
+    rewardSharingBonus('نسخ ومشاركة رابط الإحالة');
+    setTimeout(() => setCopiedLink(false), 3000);
   };
 
-  const handleCopyCode = async () => {
-    await copyToClipboard(promoDiscountCode);
+  const handleCopyCode = () => {
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: كود الخصم مقيد حتى استيفاء شرط الشراء الإجباري لأحد كتب المالك أعلاه.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
+    copyToClipboard(promoDiscountCode);
     setCopiedCode(true);
-    rewardSharingBonus('نسخ ومشاركة كود الخصم الترويجي');
-    setTimeout(() => setCopiedCode(false), 2500);
+    rewardSharingBonus('مشاركة كود الخصم');
+    setTimeout(() => setCopiedCode(false), 3000);
   };
 
-  const handleCopyPitch = async () => {
-    await copyToClipboard(promotionalPitch);
+  const handleCopyPitch = () => {
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: نص الترويج مقيد حتى استيفاء شرط الشراء الإجباري لأحد كتب المالك أعلاه.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
+    copyToClipboard(promotionalPitch);
     setCopiedPitch(true);
-    rewardSharingBonus('نسخ ونشر منشور التوصية والترويج');
-    setTimeout(() => setCopiedPitch(false), 2500);
+    rewardSharingBonus('نسخ النص الترويجي المكتمل');
+    setTimeout(() => setCopiedPitch(false), 3000);
   };
 
-  // Social Sharing Functions
+  // Social Share Handlers
   const handleShareWhatsApp = () => {
-    const encoded = encodeURIComponent(promotionalPitch);
-    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: يتطلب الترويج عبر واتساب استيفاء شرط الشراء الإجباري لكتب المالك أولاً.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
+    const text = encodeURIComponent(promotionalPitch);
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
     rewardSharingBonus('مشاركة ترويجية عبر واتساب');
   };
 
   const handleShareTelegram = () => {
-    const encodedText = encodeURIComponent(promotionalPitch);
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: يتطلب الترويج عبر تيليجرام استيفاء شرط الشراء الإجباري لكتب المالك أولاً.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
+    const text = encodeURIComponent(promotionalPitch);
     const encodedUrl = encodeURIComponent(referralUrl);
-    window.open(`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`, '_blank');
+    window.open(`https://t.me/share/url?url=${encodedUrl}&text=${text}`, '_blank');
     rewardSharingBonus('مشاركة ترويجية عبر تيليجرام');
   };
 
   const handleShareFacebook = () => {
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: يتطلب الترويج عبر فيسبوك استيفاء شرط الشراء الإجباري لكتب المالك أولاً.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
     const encodedUrl = encodeURIComponent(referralUrl);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank');
     rewardSharingBonus('مشاركة ترويجية عبر فيسبوك');
   };
 
   const handleShareTwitter = () => {
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: يتطلب الترويج عبر تويتر استيفاء شرط الشراء الإجباري لكتب المالك أولاً.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
     const text = encodeURIComponent(`أنصحكم باقتناء "${bookTitle}" من منصة ${storeName} 📚✨ استخدم كود ${promoDiscountCode} للخصم:`);
     const encodedUrl = encodeURIComponent(referralUrl);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodedUrl}`, '_blank');
@@ -150,7 +320,15 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
   };
 
   const handleNativeShare = async () => {
-    if (navigator.share) {
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: يتطلب النشر المباشر استيفاء شرط الشراء الإجباري لكتب المالك أولاً.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: `${storeName} - ${bookTitle}`,
@@ -168,6 +346,15 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
 
   // Generate & Download Visual Story Promotional Card
   const handleGenerateStoryCard = async () => {
+    if (!isVerifiedPromoter) {
+      setBuyFeedback({
+        success: false,
+        message: '🔒 عذراً: توليد بطاقة الستوري مقيد حتى استيفاء شرط الشراء الإجباري لكتب المالك أولاً.'
+      });
+      setShowOwnerBooksShowcase(true);
+      return;
+    }
+
     setIsGeneratingStoryCard(true);
     try {
       const canvas = document.createElement('canvas');
@@ -332,7 +519,263 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
 
   const innerContent = (
     <div className="space-y-4 text-right">
-      
+
+      {/* FEEDBACK BANNER */}
+      {buyFeedback && (
+        <div className={`p-4 rounded-2xl border text-xs font-bold flex items-start justify-between gap-3 animate-in fade-in duration-200 ${
+          buyFeedback.success 
+            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700' 
+            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+        }`}>
+          <div className="flex items-start gap-2.5">
+            {buyFeedback.success ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+            ) : (
+              <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            )}
+            <p className="leading-relaxed">{buyFeedback.message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBuyFeedback(null)}
+            className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 👑 SPECIALIZED TOOL: MANDATORY PURCHASE OF OWNER'S BOOKS FOR PROMOTION */}
+      {/* ========================================================================= */}
+      <div className={`rounded-2xl border-2 transition-all overflow-hidden ${
+        isVerifiedPromoter 
+          ? 'bg-gradient-to-r from-emerald-950/40 via-teal-900/30 to-amber-950/30 border-amber-400/60 shadow-md' 
+          : 'bg-gradient-to-br from-amber-50 via-amber-100/40 to-teal-50 dark:from-amber-950/40 dark:via-stone-900 dark:to-teal-950/40 border-amber-400 dark:border-amber-500 shadow-xl'
+      }`}>
+        {/* Tool Header */}
+        <div className="p-4 sm:p-5 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black shadow-md shrink-0 ${
+              isVerifiedPromoter 
+                ? 'bg-gradient-to-tr from-amber-400 to-yellow-300 text-stone-950' 
+                : 'bg-gradient-to-tr from-amber-500 to-amber-600 text-white animate-pulse'
+            }`}>
+              <Crown className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-black text-sm sm:text-base text-stone-900 dark:text-white flex items-center gap-1.5">
+                  <span>أداة الشراء الإجباري لكتب المالك لتفعيل الترويج</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 font-black">
+                    شرط إلزامي
+                  </span>
+                </h4>
+              </div>
+              <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5">
+                إلزامية اقتناء أحد مؤلفات المؤسس (<strong>أ. لقمان ياسين أبختي</strong>) لتفعيل رخصة الترويج وعمولات الإحالة
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isVerifiedPromoter ? (
+              <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-black flex items-center gap-1 shadow-sm">
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>مستوفي للشرط ومعتمد ✓</span>
+              </span>
+            ) : (
+              <span className="px-3 py-1 rounded-full bg-amber-500 text-stone-950 text-xs font-black flex items-center gap-1 shadow-sm">
+                <Lock className="w-3.5 h-3.5" />
+                <span>مطلوب الشراء للتفعيل</span>
+              </span>
+            )}
+
+            {isVerifiedPromoter && (
+              <button
+                type="button"
+                onClick={() => setShowOwnerBooksShowcase(!showOwnerBooksShowcase)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-stone-700 dark:text-stone-300 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                title="عرض/إخفاء مؤلفات المالك"
+              >
+                {showOwnerBooksShowcase ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* VERIFIED PROMOTER ACTIVE STATUS BADGE */}
+        {isVerifiedPromoter && !showOwnerBooksShowcase && (
+          <div className="px-5 pb-4 text-xs">
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-black block">
+                    ✓ حسابك مرخص رسمياً كمروّج وشريك في أرباح المنصة التشاركية!
+                  </span>
+                  <span className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                    الكتاب المقتنى: <strong>«{verifiedBook?.title || 'معا نحو التغيير: فلسفة النهضة'}»</strong> • المؤلف: أ. لقمان ياسين أبختي
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOwnerBooksShowcase(true)}
+                className="text-[11px] text-teal-700 dark:text-teal-300 underline font-bold cursor-pointer"
+              >
+                معاينة كتب المالك الإضافية
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* OWNER BOOKS DIRECT SELECTION & 1-CLICK PURCHASE INTERFACE */}
+        {(showOwnerBooksShowcase || !isVerifiedPromoter) && (
+          <div className="p-4 sm:p-5 pt-0 border-t border-amber-200 dark:border-slate-800 space-y-4">
+            
+            {/* Policy Clarification Box */}
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-400/30 text-xs text-stone-700 dark:text-stone-300 leading-relaxed">
+              <span className="font-black text-amber-800 dark:text-amber-300 block mb-0.5 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>سياسة الترويج والأرباح التشاركية المعتمدة بالمنصة:</span>
+              </span>
+              وفقاً للنظام الأساسي للمنصة، يُشترط على كل مستخدم يرغب في الترويج وكسب العمولات ومكافأة الـ <strong>+200 د.ج</strong> النقدية أن يقتني أولاً أحد مؤلفات المالك والمؤسس (الأستاذ لقمان ياسين أبختي) للإلمام برؤية المشروع وفلسفته.
+            </div>
+
+            {/* Owner's Books Grid */}
+            <div className="space-y-2.5">
+              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                <span>اختر أحد كتب المالك للاقتناء الفوري وتفعيل الترويج:</span>
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {ownerBooks.map((b) => {
+                  const isSelected = selectedOwnerBook?.id === b.id;
+                  return (
+                    <div
+                      key={b.id}
+                      onClick={() => setSelectedOwnerBookId(b.id)}
+                      className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${
+                        isSelected 
+                          ? 'bg-amber-50 dark:bg-slate-800 border-amber-500 shadow-md ring-2 ring-amber-400/30' 
+                          : 'bg-white dark:bg-slate-900 border-stone-200 dark:border-slate-800 hover:border-amber-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <img 
+                          src={b.coverUrl} 
+                          alt={b.title} 
+                          className="w-14 h-20 object-cover rounded-xl shadow-md shrink-0 border border-stone-200 dark:border-slate-700" 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-800 dark:text-amber-300 font-bold border border-amber-400/30 flex items-center gap-1">
+                              <Crown className="w-3 h-3 text-amber-500" />
+                              <span>مؤلفات المالك</span>
+                            </span>
+                          </div>
+                          <h5 className="font-bold text-xs text-stone-900 dark:text-white line-clamp-2 mt-1 leading-snug">
+                            {b.title}
+                          </h5>
+                          <span className="text-[11px] text-stone-500 dark:text-stone-400 block mt-0.5">
+                            بقلم: {b.author}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-stone-100 dark:border-slate-800 flex items-center justify-between">
+                        <span className="text-xs font-black text-amber-700 dark:text-amber-300">
+                          {b.priceDzd.toLocaleString()} د.ج
+                          <span className="text-[10px] font-normal text-stone-400 mr-1.5">
+                            (≈ {(b.priceDzd / (customization?.exchangeRateUsdtToDzd || 240)).toFixed(2)} USDT)
+                          </span>
+                        </span>
+                        
+                        <span className={`text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 ${
+                          isSelected 
+                            ? 'bg-amber-500 text-stone-950 shadow-xs' 
+                            : 'bg-stone-100 dark:bg-slate-800 text-stone-600 dark:text-stone-300'
+                        }`}>
+                          {isSelected ? '✓ محدد للاقتناء' : 'تحديد الكتاب'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Direct Purchase Actions Tool */}
+            {selectedOwnerBook && (
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-slate-700 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                  <span className="text-stone-600 dark:text-stone-300 font-bold">
+                    الكتاب المختار: <strong className="text-stone-900 dark:text-white">«{selectedOwnerBook.title}»</strong>
+                  </span>
+                  <span className="text-amber-700 dark:text-amber-400 font-black">
+                    المبلغ: {selectedOwnerBook.priceDzd.toLocaleString()} د.ج
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  
+                  {/* 1. Instant Wallet Purchase */}
+                  <button
+                    type="button"
+                    onClick={handleBuyOwnerBookWallet}
+                    disabled={isProcessingBuy}
+                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] disabled:opacity-50"
+                  >
+                    <Zap className="w-4 h-4 fill-white" />
+                    <span>
+                      {currentUser.walletDzd >= selectedOwnerBook.priceDzd 
+                        ? `اقتناء فوري بالمحفظة (${selectedOwnerBook.priceDzd.toLocaleString()} د.ج)`
+                        : `شحن المحفظة (رصيدك: ${currentUser.walletDzd.toLocaleString()} د.ج)`
+                      }
+                    </span>
+                  </button>
+
+                  {/* 2. BaridiMob Quick Pay */}
+                  <button
+                    type="button"
+                    onClick={handleBuyOwnerBookBaridiMob}
+                    disabled={isProcessingBuy}
+                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-teal-800 to-emerald-800 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] disabled:opacity-50"
+                  >
+                    <Building2 className="w-4 h-4 text-amber-300" />
+                    <span>شراء عبر بريدي موب (RIP)</span>
+                  </button>
+
+                  {/* 3. Binance Pay USDT */}
+                  <button
+                    type="button"
+                    onClick={handleBuyOwnerBookBinance}
+                    disabled={isProcessingBuy}
+                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-stone-950 text-xs font-black flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all hover:scale-[1.02] disabled:opacity-50"
+                  >
+                    <Coins className="w-4 h-4 fill-stone-950" />
+                    <span>شراء عبر بينانس باي (USDT)</span>
+                  </button>
+
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 pt-1">
+                  <span>• يتم توثيق العملية فورياً واعتماد حسابك كمروّج رسمي خلال ثوانٍ</span>
+                  <span>حساب المالك: <strong>{paymentAccounts?.baridimobPhone || '0652206947'}</strong></span>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* REST OF PROMOTION TOOL (ACTIVE OR LOCKED ACCORDING TO MANDATORY STATUS) */}
+      {/* ========================================================================= */}
+
       {/* Automatic Promotion Live Confirmation Banner */}
       <div className="bg-gradient-to-r from-teal-900 via-emerald-800 to-teal-950 text-white p-4 rounded-2xl shadow-xl border border-teal-400/40 relative overflow-hidden animate-in slide-in-from-top-2">
         <div className="absolute -left-6 -top-6 w-24 h-24 bg-amber-400/20 rounded-full blur-xl pointer-events-none" />
@@ -344,14 +787,16 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-xs sm:text-sm font-black text-amber-300">
-                  ⚡ تم الترويج التلقائي للموقع بنجاح فور الشراء!
+                  ⚡ نظام الترويج التشاركي والأرباح الفورية
                 </h4>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-white font-black text-[10px]">
-                  مُفعّل تلقائياً 100%
+                <span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${
+                  isVerifiedPromoter ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-stone-950'
+                }`}>
+                  {isVerifiedPromoter ? 'مُفعّل ومعتمد 100%' : 'بانتظار الشراء الإجباري'}
                 </span>
               </div>
               <p className="text-xs text-teal-100 mt-1 leading-relaxed">
-                تم تفعيل كود الخصم (<strong>{promoDiscountCode}</strong>) ورابط الإحالة الخاص بك، مع بث إشعار ترويجي فوري في المنصة، وإيداع <strong>+200 د.ج</strong> رصيد مكافأة في محفظتك الإلكترونية.
+                كود الخصم (<strong>{promoDiscountCode}</strong>) ورابط الإحالة يمنحان أصدقائك خصماً 20%، ويمنحانك <strong>+200 د.ج</strong> رصيد ترويج فوري بالإضافة إلى عمولة 10% من كل مبيعة!
               </p>
               {autoCopied && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/25 border border-emerald-400/40 text-[11px] font-bold text-emerald-200">
@@ -372,7 +817,16 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
       </div>
 
       {/* Prominent Promotion Wallet Credit Card */}
-      <div className="bg-gradient-to-r from-amber-500/15 via-emerald-500/20 to-teal-500/15 border-2 border-amber-400/60 dark:border-amber-500/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3.5 shadow-lg">
+      <div className="bg-gradient-to-r from-amber-500/15 via-emerald-500/20 to-teal-500/15 border-2 border-amber-400/60 dark:border-amber-500/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3.5 shadow-lg relative">
+        {!isVerifiedPromoter && (
+          <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-[1px] rounded-2xl flex items-center justify-center z-20">
+            <div className="bg-black/80 text-white px-4 py-2 rounded-xl border border-amber-400/50 flex items-center gap-2 text-xs font-bold shadow-lg">
+              <Lock className="w-4 h-4 text-amber-400" />
+              <span>مكافأة الـ 200 د.ج مقيدة: يتطلب استيفاء الشراء الإجباري لأحد كتب المالك أولاً</span>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-stone-950 flex items-center justify-center shrink-0 shadow-md font-black">
             <Coins className="w-6 h-6" />
@@ -464,7 +918,16 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
       </div>
 
       {/* 1-Click Social Sharing Buttons */}
-      <div>
+      <div className="relative">
+        {!isVerifiedPromoter && (
+          <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-[1px] rounded-2xl flex items-center justify-center z-10">
+            <div className="bg-black/80 text-white px-3 py-1.5 rounded-xl border border-amber-400/50 flex items-center gap-2 text-xs font-bold">
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>مقفول: يتطلب الشراء الإجباري لكتب المالك أولاً</span>
+            </div>
+          </div>
+        )}
+
         <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-2 flex items-center gap-1.5">
           <Share2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
           <span>المشاركة والنشر الفوري بنقرة واحدة:</span>
@@ -515,14 +978,22 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
       </div>
 
       {/* Referral Link & Promo Code Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 relative">
+        {!isVerifiedPromoter && (
+          <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-[1px] rounded-2xl flex items-center justify-center z-10">
+            <div className="bg-black/80 text-white px-3 py-1.5 rounded-xl border border-amber-400/50 flex items-center gap-2 text-xs font-bold">
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>الروابط والأكواد مقيدة بشرط الشراء الإجباري</span>
+            </div>
+          </div>
+        )}
+
         {/* Referral Link Box */}
         <div className="sm:col-span-2 p-3 bg-stone-100 dark:bg-slate-800/80 rounded-xl border border-stone-200 dark:border-slate-700 flex items-center justify-between gap-2">
           <div className="truncate flex-1">
             <span className="block text-[10px] text-stone-500 dark:text-stone-400 font-medium">رابط الإحالة الترويجي الخاص بك:</span>
             <span className="text-xs font-mono font-bold text-teal-700 dark:text-teal-400 truncate block dir-ltr text-left">
-              {referralUrl}
+              {isVerifiedPromoter ? referralUrl : '🔒 https://together-change.dz/?ref=LOCKED'}
             </span>
           </div>
           <button
@@ -557,7 +1028,7 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
       </div>
 
       {/* Copy Pre-formatted Recommendation Post */}
-      <div className="p-3 bg-stone-50 dark:bg-slate-800/50 rounded-xl border border-stone-200 dark:border-slate-700 space-y-2">
+      <div className="p-3 bg-stone-50 dark:bg-slate-800/50 rounded-xl border border-stone-200 dark:border-slate-700 space-y-2 relative">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-stone-600 dark:text-stone-300 flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -578,8 +1049,7 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
       </div>
 
       {/* Action Footer: Story Visual Graphic Generator & Native Share */}
-      <div className="flex flex-col sm:flex-row gap-2 pt-1">
-        
+      <div className="flex flex-col sm:flex-row gap-2 pt-1 relative">
         {/* Story Visual Card Generator */}
         <button
           type="button"
@@ -637,7 +1107,10 @@ export const PurchasePromotionTool: React.FC<PurchasePromotionToolProps> = ({
                 روّج للمنصة واربح مكافآت وعمولات فورية 🚀
               </h3>
               <span className="text-xs text-teal-100 font-medium">
-                شكراً لاقتنائك الكتاب! انشر المعرفة وشارك الرابط مع أصدقائك
+                {isVerifiedPromoter 
+                  ? 'رخصتك الترويجية مفعلة ومعتمدة رسمياً! انشر المعرفة واكسب الأرباح'
+                  : 'أداة الشراء الإجباري لكتب المالك لتفعيل الترويج والأرباح التشاركية'
+                }
               </span>
             </div>
           </div>

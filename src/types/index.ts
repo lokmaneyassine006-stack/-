@@ -301,6 +301,7 @@ export interface StoreCustomization {
   exchangeRateUsdtToDzd: number;
   platformCommissionPercent: number;
   presidentName: string;
+  mandatoryOwnerBookPurchaseForPromotion?: boolean;
 }
 
 export interface SocialLinks {

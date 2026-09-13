@@ -92,6 +92,8 @@ interface StoreContextType {
 
   // Transactions & Wallet
   transactions: SaleTransaction[];
+  hasPurchasedOwnerBook: (userId?: string) => boolean;
+  getOwnerBooks: () => Book[];
   processPurchase: (bookIds: string[], paymentMethod: 'binance' | 'baridimob' | 'cib_ccp' | 'gift_card' | 'wallet', txHash?: string) => { success: boolean; message: string; txRef: string };
   updateWalletBalance: (amountDzd: number, reason?: string) => void;
   rewardPromotionBonus: (amountDzd?: number, reason?: string, bookTitle?: string) => { success: boolean; amountDzd: number; newBalance: number; message: string; txRef: string };
@@ -423,6 +425,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     exchangeRateUsdtToDzd: 240,
     platformCommissionPercent: 10,
     presidentName: 'لقمان ياسين أبختي',
+    mandatoryOwnerBookPurchaseForPromotion: true,
   }));
 
   // Social Links
@@ -1498,6 +1501,13 @@ ${balanceText}${truecallerSeal}
     setTransactions((prev) => [...newTxList, ...prev]);
     clearCart();
 
+    // Deduct from buyer wallet if payment method was wallet
+    if (paymentMethod === 'wallet' && currentUser.id !== OWNER_USER.id) {
+      const totalPurchasedDzd = purchasedBooks.reduce((sum, b) => sum + b.priceDzd, 0);
+      setCurrentUserState((prev) => ({ ...prev, walletDzd: Math.max(0, prev.walletDzd - totalPurchasedDzd) }));
+      setAllUsers((prev) => prev.map((u) => u.id === currentUser.id ? { ...u, walletDzd: Math.max(0, (u.walletDzd || 0) - totalPurchasedDzd) } : u));
+    }
+
     // Automatic Promotion of the Store & Book upon Purchase
     const buyerDisplayName = currentUser.firstName 
       ? `${currentUser.firstName} ${currentUser.lastName ? currentUser.lastName.charAt(0) + '.' : ''}`
@@ -2098,12 +2108,50 @@ ${balanceText}${truecallerSeal}
     }
   }, [currentUser, customization]);
 
+  // Helper: Retrieve all books written/published by the Platform Owner (Lokmane Yassine Abakhti)
+  const getOwnerBooks = useCallback((): Book[] => {
+    return books.filter((b) => b.isOwnerBook || b.authorId === OWNER_USER.id || b.author.includes('لقمان ياسين'));
+  }, [books]);
+
+  // Helper: Check if a user has completed the mandatory purchase of at least one of the Owner's books
+  const hasPurchasedOwnerBook = useCallback((userId?: string): boolean => {
+    const targetId = userId || currentUser.id;
+    // The Platform Owner is naturally exempt and permanently verified
+    if (targetId === OWNER_USER.id || currentUser.role === 'owner') {
+      return true;
+    }
+    const ownerBooksList = books.filter((b) => b.isOwnerBook || b.authorId === OWNER_USER.id || b.author.includes('لقمان ياسين'));
+    const ownerBookIds = ownerBooksList.map((b) => b.id);
+    const targetUser = allUsers.find((u) => u.id === targetId) || currentUser;
+
+    return transactions.some((tx) => {
+      const isBuyer = tx.buyerId === targetId || tx.userId === targetId || (targetUser.email && tx.buyerEmail === targetUser.email);
+      const isCompleted = !tx.status || tx.status === 'completed';
+      const isOwnerProduct = (tx.bookId && ownerBookIds.includes(tx.bookId)) || tx.sellerId === OWNER_USER.id || (tx.sellerName && tx.sellerName.includes('لقمان ياسين'));
+      return isBuyer && isCompleted && isOwnerProduct;
+    });
+  }, [currentUser, allUsers, books, transactions]);
+
   // Dedicated Promotion Reward Engine: Adds promotion bonus directly to user's wallet and records official transaction
   const rewardPromotionBonus = useCallback((
     amountDzd = 200, 
     reason = 'مكافأة ترويج ومشاركة المنصة', 
     bookTitle?: string
   ) => {
+    // Enforce mandatory purchase of owner's books rule if active
+    if (customization.mandatoryOwnerBookPurchaseForPromotion !== false) {
+      const isVerifiedPromoter = currentUser.role === 'owner' || currentUser.id === OWNER_USER.id || hasPurchasedOwnerBook(currentUser.id);
+      if (!isVerifiedPromoter) {
+        return {
+          success: false,
+          amountDzd: 0,
+          newBalance: currentUser.walletDzd,
+          message: '⚠️ يتطلب الحصول على مكافأة الترويج والأرباح التشاركية استيفاء شرط الشراء الإجباري لأحد كتب المالك (أ. لقمان ياسين أبختي) أولاً.',
+          txRef: ''
+        };
+      }
+    }
+
     const validAmount = Math.max(50, amountDzd);
     const promoRef = generateReferenceCode('PRM');
     const usdtVal = +(((validAmount || 0) / (customization?.exchangeRateUsdtToDzd || 250)) || 0).toFixed(2);
@@ -2388,6 +2436,7 @@ ${balanceText}${truecallerSeal}
       exchangeRateUsdtToDzd: 240,
       platformCommissionPercent: 10,
       presidentName: 'لقمان ياسين أبختي',
+      mandatoryOwnerBookPurchaseForPromotion: true,
     };
     setCustomization(defaultCustomization);
     saveStorage('customization', defaultCustomization);
@@ -2630,6 +2679,8 @@ ${balanceText}${truecallerSeal}
         likeForumReply,
         deleteForumTopic,
         transactions,
+        hasPurchasedOwnerBook,
+        getOwnerBooks,
         processPurchase,
         updateWalletBalance,
         rewardPromotionBonus,

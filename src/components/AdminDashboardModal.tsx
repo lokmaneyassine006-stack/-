@@ -98,6 +98,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   const [presidentName, setPresidentName] = useState(customization?.presidentName || '');
   const [exchangeRate, setExchangeRate] = useState((customization?.exchangeRateUsdtToDzd || 240).toString());
   const [commissionRate, setCommissionRate] = useState((customization?.platformCommissionPercent || 10).toString());
+  const [mandatoryOwnerPurchase, setMandatoryOwnerPurchase] = useState(customization?.mandatoryOwnerBookPurchaseForPromotion ?? true);
 
   // Payment Accounts Form
   const [baridiRip, setBaridiRip] = useState(paymentAccounts?.baridimobRip || '00799999002847192033');
@@ -126,6 +127,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
       presidentName,
       exchangeRateUsdtToDzd: Number(exchangeRate) || 240,
       platformCommissionPercent: Number(commissionRate) || 10,
+      mandatoryOwnerBookPurchaseForPromotion: mandatoryOwnerPurchase,
     });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2000);
@@ -434,6 +436,32 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     required
                   />
                 </div>
+              </div>
+
+              {/* Mandatory Owner Book Purchase for Promotion Tool Control */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-teal-50 dark:from-amber-950/20 dark:to-teal-950/20 border border-amber-300 dark:border-amber-700/50 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center font-black shadow-xs shrink-0">
+                    <Crown className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">
+                      أداة الشراء الإجباري لكتب المالك لتفعيل الترويج
+                    </h4>
+                    <p className="text-[11px] text-stone-600 dark:text-stone-400">
+                      إلزام المستخدمين والمروجين باقتناء أحد مؤلفات المالك (أ. لقمان ياسين أبختي) قبل فتح أدوات وروابط الترويج والأرباح التشاركية
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={mandatoryOwnerPurchase}
+                    onChange={(e) => setMandatoryOwnerPurchase(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
               </div>
 
               <button
