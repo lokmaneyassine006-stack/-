@@ -45,9 +45,60 @@ html, body {
   color: #f8fafc;
 }
 
+/* Sepia Mode: Warm, gentle paper parchment tones for reading comfort and reducing blue light */
 .theme-sepia {
-  background-color: #fcf6ec;
-  color: #382d22;
+  background-color: #f5efe1;
+  color: #382d20;
+}
+
+.theme-sepia body,
+body.theme-sepia {
+  background-color: #f5efe1 !important;
+  color: #382d20 !important;
+}
+
+.theme-sepia header {
+  background-color: rgba(245, 239, 225, 0.96) !important;
+  border-color: #e3d5be !important;
+}
+
+.theme-sepia .bg-white,
+.theme-sepia .bg-stone-50,
+.theme-sepia .bg-stone-50\/70,
+.theme-sepia .bg-stone-50\/80 {
+  background-color: #fcf8f0 !important;
+}
+
+.theme-sepia .bg-stone-100,
+.theme-sepia .bg-stone-100\/80 {
+  background-color: #ece2ce !important;
+}
+
+.theme-sepia .border-stone-200,
+.theme-sepia .border-stone-200\/60,
+.theme-sepia .border-stone-200\/90,
+.theme-sepia .border-stone-300 {
+  border-color: #e2d4bc !important;
+}
+
+.theme-sepia .text-stone-900,
+.theme-sepia .text-stone-800 {
+  color: #382d20 !important;
+}
+
+.theme-sepia .text-stone-700,
+.theme-sepia .text-stone-600 {
+  color: #5d4a37 !important;
+}
+
+.theme-sepia .text-stone-500,
+.theme-sepia .text-stone-400 {
+  color: #84725e !important;
+}
+
+.theme-sepia .glass-panel {
+  background: rgba(250, 244, 233, 0.94) !important;
+  border-color: #e2d4bc !important;
 }
 
 /* Custom scrollbars */

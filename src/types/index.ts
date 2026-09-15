@@ -409,3 +409,34 @@ export interface PublisherProfile {
   submissionOpen: boolean;
   aboutPublisher: string;
 }
+
+export interface BookRecommendationItem {
+  bookId: string;
+  reason: string;
+  matchScore: number;
+  highlightTag?: string;
+  book?: Book;
+}
+
+export interface RecommendationResponse {
+  readingProfile: string;
+  greeting: string;
+  recommendations: BookRecommendationItem[];
+  source: 'gemini' | 'algorithmic';
+}
+
+export interface TfcAction {
+  label: string;
+  actionType: 'modal' | 'scroll' | 'action';
+  target: string;
+  description?: string;
+}
+
+export interface TfcMessage {
+  id: string;
+  sender: 'user' | 'tfc';
+  text: string;
+  timestamp: string;
+  suggestedActions?: TfcAction[];
+  quickTopics?: string[];
+}

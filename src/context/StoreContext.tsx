@@ -242,6 +242,8 @@ interface StoreContextType {
   getPublisherProfile: (publisherName: string) => PublisherProfile;
   activePublisherBook: Book | null;
   setActivePublisherBook: (book: Book | null) => void;
+  recentlyViewed: Book[];
+  recordBookView: (book: Book) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -476,13 +478,48 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Localization & Currency
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>(LANGUAGES[0]);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('DZD');
-  const [themeMode, setThemeModeState] = useState<'light' | 'dark' | 'sepia' | 'auto'>('light');
+  const [themeMode, setThemeModeState] = useState<'light' | 'dark' | 'sepia' | 'auto'>(() => {
+    try {
+      const stored = localStorage.getItem('together_change_theme') || 
+                     localStorage.getItem(LOCAL_STORAGE_PREFIX + 'themeMode') || 
+                     localStorage.getItem('themeMode') || 
+                     localStorage.getItem('theme');
+      if (stored) {
+        const clean = stored.replace(/"/g, '').trim();
+        if (['light', 'dark', 'sepia', 'auto'].includes(clean)) {
+          return clean as 'light' | 'dark' | 'sepia' | 'auto';
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load theme from localStorage:', e);
+    }
+    return 'light';
+  });
 
   // Modals state
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [activeBookForModal, setActiveBookForModal] = useState<Book | null>(null);
   const [quickBinanceBook, setQuickBinanceBook] = useState<Book | null>(null);
   const [activePublisherBook, setActivePublisherBook] = useState<Book | null>(null);
+
+  // Recently browsed books for Gemini AI personalized recommendations
+  const [recentlyViewed, setRecentlyViewed] = useState<Book[]>(() => {
+    const saved = loadStorage<Book[]>('recentlyViewedBooks', []);
+    if (saved && saved.length > 0) {
+      return saved;
+    }
+    // Initial seed so Gemini recommendations have rich context from first visit
+    return INITIAL_BOOKS.slice(0, 2);
+  });
+
+  const recordBookView = useCallback((book: Book) => {
+    setRecentlyViewed((prev) => {
+      const filtered = prev.filter((b) => b.id !== book.id);
+      const updated = [book, ...filtered].slice(0, 10);
+      saveStorage('recentlyViewedBooks', updated);
+      return updated;
+    });
+  }, []);
 
   // Publisher Messages and Communication Hub
   const [publisherMessages, setPublisherMessages] = useState<PublisherMessage[]>(() => loadStorage('publisherMessages', INITIAL_PUBLISHER_MESSAGES));
@@ -890,8 +927,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-    root.classList.remove('theme-light', 'theme-dark', 'theme-sepia');
-    body.classList.remove('theme-light', 'theme-dark', 'theme-sepia');
+    root.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'dark');
+    body.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'dark');
 
     let effectiveTheme = themeMode;
     if (themeMode === 'auto') {
@@ -899,9 +936,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       effectiveTheme = prefersDark ? 'dark' : 'light';
     }
 
-    const themeClass = `theme-${effectiveTheme}`;
-    root.classList.add(themeClass);
-    body.classList.add(themeClass);
+    if (effectiveTheme === 'dark') {
+      root.classList.add('dark', 'theme-dark');
+      body.classList.add('dark', 'theme-dark');
+      root.style.colorScheme = 'dark';
+    } else if (effectiveTheme === 'sepia') {
+      root.classList.add('theme-sepia');
+      body.classList.add('theme-sepia');
+      root.style.colorScheme = 'light';
+    } else {
+      root.classList.add('theme-light');
+      body.classList.add('theme-light');
+      root.style.colorScheme = 'light';
+    }
   }, [themeMode]);
 
   // Handle language and RTL direction
@@ -914,6 +961,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setThemeMode = useCallback((mode: 'light' | 'dark' | 'sepia' | 'auto') => {
     setThemeModeState(mode);
+    try {
+      localStorage.setItem('together_change_theme', mode);
+      localStorage.setItem('theme', mode);
+      localStorage.setItem('themeMode', mode);
+      localStorage.setItem(LOCAL_STORAGE_PREFIX + 'themeMode', JSON.stringify(mode));
+    } catch (e) {
+      console.warn('Failed to save theme to localStorage:', e);
+    }
     setCustomization((prev) => ({ ...prev, themeMode: mode }));
   }, []);
 
@@ -2895,7 +2950,9 @@ ${balanceText}${truecallerSeal}
         replyToPublisherMessage,
         getPublisherProfile,
         activePublisherBook,
-        setActivePublisherBook
+        setActivePublisherBook,
+        recentlyViewed,
+        recordBookView
       }}
     >
       {children}

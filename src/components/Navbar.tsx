@@ -235,49 +235,157 @@ export const Navbar: React.FC = () => {
               )}
             </div>
 
-            {/* Theme Selector (4 modes: Light, Dark, Sepia Night, Auto) */}
-            <div className="relative">
-              <button 
-                onClick={() => { setIsThemeDropdownOpen(!isThemeDropdownOpen); setIsLangDropdownOpen(false); setIsCurrDropdownOpen(false); }}
-                className="p-2 rounded-lg border border-stone-200 dark:border-slate-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title="تخصيص المظهر ووضع القراءة"
+            {/* Theme Toggle (مفتاح تبديل السمة: إضاءة / مظلم / سيبييا) */}
+            <div id="theme-toggle-container" className="relative flex items-center">
+              {/* Direct Segmented Theme Toggle */}
+              <div 
+                id="theme-toggle"
+                className="flex items-center p-0.5 sm:p-1 rounded-xl bg-stone-100 dark:bg-slate-800 border border-stone-200/90 dark:border-slate-700 shadow-2xs"
+                role="group"
+                aria-label="مفتاح تبديل السمة"
               >
-                {themeMode === 'light' && <Sun className="w-4 h-4 text-amber-500" />}
-                {themeMode === 'dark' && <Moon className="w-4 h-4 text-indigo-400" />}
-                {themeMode === 'sepia' && <Sparkles className="w-4 h-4 text-amber-700" />}
-                {themeMode === 'auto' && <Settings className="w-4 h-4 text-teal-600" />}
-              </button>
+                {/* Light Mode Button */}
+                <button 
+                  id="theme-toggle-light"
+                  type="button"
+                  onClick={() => setThemeMode('light')}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+                    themeMode === 'light'
+                      ? 'bg-white text-stone-900 shadow-xs ring-1 ring-stone-200 font-black'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-200/50 dark:hover:bg-slate-700/50'
+                  }`}
+                  title="وضع الإضاءة (فاتح ناصع للقراءة النهارية)"
+                  aria-pressed={themeMode === 'light'}
+                >
+                  <Sun className={`w-3.5 h-3.5 shrink-0 ${themeMode === 'light' ? 'text-amber-500' : 'text-stone-500'}`} />
+                  <span className="hidden md:inline">إضاءة</span>
+                </button>
 
+                {/* Dark Mode Button */}
+                <button 
+                  id="theme-toggle-dark"
+                  type="button"
+                  onClick={() => setThemeMode('dark')}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+                    themeMode === 'dark'
+                      ? 'bg-slate-900 text-indigo-300 shadow-xs ring-1 ring-slate-700 font-black'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-200/50 dark:hover:bg-slate-700/50'
+                  }`}
+                  title="الوضع المظلم (ليلي ومريح للعين)"
+                  aria-pressed={themeMode === 'dark'}
+                >
+                  <Moon className={`w-3.5 h-3.5 shrink-0 ${themeMode === 'dark' ? 'text-indigo-400' : 'text-stone-500'}`} />
+                  <span className="hidden md:inline">مظلم</span>
+                </button>
+
+                {/* Sepia Mode Button */}
+                <button 
+                  id="theme-toggle-sepia"
+                  type="button"
+                  onClick={() => setThemeMode('sepia')}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+                    themeMode === 'sepia'
+                      ? 'bg-[#eedec0] text-[#3d2c1b] shadow-xs ring-1 ring-[#dcbf99] font-black'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-200/50 dark:hover:bg-slate-700/50'
+                  }`}
+                  title="وضع السيبييا (ورق دافئ ومريح للعين)"
+                  aria-pressed={themeMode === 'sepia'}
+                >
+                  <BookOpen className={`w-3.5 h-3.5 shrink-0 ${themeMode === 'sepia' ? 'text-amber-800' : 'text-stone-500'}`} />
+                  <span className="hidden md:inline">سيبييا</span>
+                </button>
+
+                {/* Dropdown Toggle Trigger for detailed view / Auto */}
+                <button 
+                  id="theme-dropdown-trigger"
+                  type="button"
+                  onClick={() => { setIsThemeDropdownOpen(!isThemeDropdownOpen); setIsLangDropdownOpen(false); setIsCurrDropdownOpen(false); }}
+                  className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-md cursor-pointer transition-colors"
+                  title="خيارات إضافية للسمات"
+                >
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isThemeDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Theme Dropdown Details & Info */}
               {isThemeDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-stone-200 dark:border-slate-700 py-1.5 z-50">
+                <div className="absolute left-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-stone-200 dark:border-slate-700 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2.5 py-1 text-[11px] font-bold text-stone-400 border-b border-stone-100 dark:border-slate-700 mb-1">
+                    تفضيلات المظهر وراحة العين
+                  </div>
+
+                  {/* Light Option */}
                   <button 
                     onClick={() => { setThemeMode('light'); setIsThemeDropdownOpen(false); }}
-                    className={`w-full text-right px-3 py-2 text-xs flex items-center gap-2 hover:bg-stone-100 dark:hover:bg-slate-700 cursor-pointer ${themeMode === 'light' ? 'font-bold text-teal-600' : ''}`}
+                    className={`w-full text-right px-2.5 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-stone-100 dark:hover:bg-slate-700 cursor-pointer transition-colors ${
+                      themeMode === 'light' ? 'bg-amber-500/10 font-black text-amber-900 dark:text-amber-200' : 'text-stone-700 dark:text-stone-200'
+                    }`}
                   >
-                    <Sun className="w-3.5 h-3.5 text-amber-500" />
-                    <span>وضع عادي (فاتح)</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                        <Sun className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="block font-bold">وضع الإضاءة</span>
+                        <span className="text-[10px] text-stone-500 dark:text-stone-400">ناصع ونهاري</span>
+                      </div>
+                    </div>
+                    {themeMode === 'light' && <CheckCircle2 className="w-4 h-4 text-amber-600" />}
                   </button>
+
+                  {/* Dark Option */}
                   <button 
                     onClick={() => { setThemeMode('dark'); setIsThemeDropdownOpen(false); }}
-                    className={`w-full text-right px-3 py-2 text-xs flex items-center gap-2 hover:bg-stone-100 dark:hover:bg-slate-700 cursor-pointer ${themeMode === 'dark' ? 'font-bold text-teal-600' : ''}`}
+                    className={`w-full text-right px-2.5 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-stone-100 dark:hover:bg-slate-700 cursor-pointer transition-colors ${
+                      themeMode === 'dark' ? 'bg-indigo-500/10 font-black text-indigo-900 dark:text-indigo-200' : 'text-stone-700 dark:text-stone-200'
+                    }`}
                   >
-                    <Moon className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>وضع داكن (ليلي)</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-indigo-900 text-indigo-300 flex items-center justify-center">
+                        <Moon className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="block font-bold">الوضع المظلم</span>
+                        <span className="text-[10px] text-stone-500 dark:text-stone-400">ليلي وموفر للطاقة</span>
+                      </div>
+                    </div>
+                    {themeMode === 'dark' && <CheckCircle2 className="w-4 h-4 text-indigo-500" />}
                   </button>
+
+                  {/* Sepia Option */}
                   <button 
                     onClick={() => { setThemeMode('sepia'); setIsThemeDropdownOpen(false); }}
-                    className={`w-full text-right px-3 py-2 text-xs flex items-center gap-2 hover:bg-stone-100 dark:hover:bg-slate-700 cursor-pointer ${themeMode === 'sepia' ? 'font-bold text-teal-600' : ''}`}
+                    className={`w-full text-right px-2.5 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-stone-100 dark:hover:bg-slate-700 cursor-pointer transition-colors ${
+                      themeMode === 'sepia' ? 'bg-amber-700/10 font-black text-amber-900 dark:text-amber-200' : 'text-stone-700 dark:text-stone-200'
+                    }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                    <span>قراءة ليلية (ألوان دافئة)</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-[#eddcb8] text-[#553b21] flex items-center justify-center">
+                        <BookOpen className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="block font-bold">وضع السيبييا</span>
+                        <span className="text-[10px] text-stone-500 dark:text-stone-400">مريح للعين (ورق دافئ)</span>
+                      </div>
+                    </div>
+                    {themeMode === 'sepia' && <CheckCircle2 className="w-4 h-4 text-amber-700" />}
                   </button>
-                  <button 
-                    onClick={() => { setThemeMode('auto'); setIsThemeDropdownOpen(false); }}
-                    className={`w-full text-right px-3 py-2 text-xs flex items-center gap-2 hover:bg-stone-100 dark:hover:bg-slate-700 cursor-pointer ${themeMode === 'auto' ? 'font-bold text-teal-600' : ''}`}
-                  >
-                    <Settings className="w-3.5 h-3.5 text-teal-600" />
-                    <span>تلقائي (حسب النظام)</span>
-                  </button>
+
+                  {/* Auto Option */}
+                  <div className="pt-1 mt-1 border-t border-stone-100 dark:border-slate-700">
+                    <button 
+                      onClick={() => { setThemeMode('auto'); setIsThemeDropdownOpen(false); }}
+                      className={`w-full text-right px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-stone-100 dark:hover:bg-slate-700 cursor-pointer transition-colors ${
+                        themeMode === 'auto' ? 'font-bold text-teal-600 bg-teal-50 dark:bg-teal-950/40' : 'text-stone-600 dark:text-stone-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Settings className="w-3.5 h-3.5 text-stone-400" />
+                        <span className="text-[11px]">تلقائي (حسب إعدادات النظام)</span>
+                      </div>
+                      {themeMode === 'auto' && <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

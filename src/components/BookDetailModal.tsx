@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, Star, Headphones, Globe, ShieldCheck, Download, 
   MessageSquare, ThumbsUp, Plus, Check, Play, Pause, 
@@ -43,8 +43,15 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
     setActivePublisherBook,
     getPublisherProfile,
     publisherMessages,
-    sendPublisherMessage
+    sendPublisherMessage,
+    recordBookView
   } = useStore();
+
+  useEffect(() => {
+    if (book) {
+      recordBookView(book);
+    }
+  }, [book?.id, recordBookView]);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'translations' | 'copyright' | 'reviews' | 'promote' | 'publisher'>('overview');
   
