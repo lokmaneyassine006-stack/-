@@ -131,8 +131,8 @@ export const BaridimobSmsModal: React.FC = () => {
               </div>
               <p className="text-xs text-stone-400">
                 {isBinance 
-                  ? 'إشعار أمان ومعاملة مالية فوري لمعاملات بينانس والسحب الإنشائي' 
-                  : 'إشعار رسمي فوري لعمليات السحب الإنشائي والتحويل عبر بريد الجزائر'}
+                  ? 'إشعار أمان ومعاملة مالية فوري لمعاملات بينانس وسحب الأرباح' 
+                  : 'إشعار رسمي فوري لعمليات سحب الأرباح والتحويل عبر بريد الجزائر'}
               </p>
             </div>
           </div>
@@ -203,7 +203,7 @@ export const BaridimobSmsModal: React.FC = () => {
                       isBinance ? 'text-amber-400 border-amber-500/20' : 'text-emerald-400 border-emerald-500/20'
                     }`}>
                       <span>
-                        {isBinance ? 'إشعار معاملة مالية بينانس' : 'إشعار سحب إنشائي معتمد'}
+                        {isBinance ? 'إشعار معاملة مالية بينانس' : 'إشعار سحب مالي معتمد'}
                       </span>
                       <span className="font-mono text-[10px] text-stone-400">{currentSms.sentAt}</span>
                     </div>
@@ -272,7 +272,7 @@ export const BaridimobSmsModal: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-stone-400">نوع الخدمة المالي:</span>
                     <span className={`font-bold ${isBinance ? 'text-amber-400' : 'text-emerald-400'}`}>
-                      {isBinance ? 'بينانس Binance Pay / USDT • تحويل فوري معتمد' : 'بريدي موب BaridiMob • تحويل إنشائي معتمد'}
+                      {isBinance ? 'بينانس Binance Pay / USDT • تحويل فوري معتمد' : 'بريدي موب BaridiMob • تحويل مالي معتمد'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { 
   X, Star, Headphones, Globe, ShieldCheck, Download, 
   MessageSquare, ThumbsUp, Plus, Check, Play, Pause, 
-  BookOpen, FileText, Share2, Award, Sparkles, Send, AlertTriangle, Building2, Zap, FileCode2, Eye
+  BookOpen, FileText, Share2, Award, Sparkles, Send, AlertTriangle, Building2, Zap, FileCode2, Eye,
+  MessageCircle, Mail, Phone, MapPin, ExternalLink, Clock, CheckCircle2
 } from 'lucide-react';
-import { Book, Review, BookTranslation } from '../types';
+import { Book, Review, BookTranslation, PublisherMessage } from '../types';
 import { useStore } from '../context/StoreContext';
 import { formatPrice } from '../utils/currencies';
 import { LANGUAGES } from '../utils/translations';
@@ -38,10 +39,27 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
     likeReview, 
     currentUser, 
     addTranslationToBook,
-    setActiveModal
+    setActiveModal,
+    setActivePublisherBook,
+    getPublisherProfile,
+    publisherMessages,
+    sendPublisherMessage
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'translations' | 'copyright' | 'reviews' | 'promote'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'translations' | 'copyright' | 'reviews' | 'promote' | 'publisher'>('overview');
+  
+  // Publisher contact form state
+  const publisherProfile = getPublisherProfile(book.publisher);
+  const [pubSenderName, setPubSenderName] = useState(
+    currentUser.firstName ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : ''
+  );
+  const [pubSenderEmail, setPubSenderEmail] = useState(currentUser.email || '');
+  const [pubSenderPhone, setPubSenderPhone] = useState('');
+  const [pubCategory, setPubCategory] = useState<PublisherMessage['category']>('reader_question');
+  const [pubSubject, setPubSubject] = useState(`استفسار رسمي بخصوص كتاب: ${book.title}`);
+  const [pubMessageText, setPubMessageText] = useState('');
+  const [pubSending, setPubSending] = useState(false);
+  const [pubSuccess, setPubSuccess] = useState(false);
   
   // Review form state
   const [ratingInput, setRatingInput] = useState(5);
@@ -211,7 +229,19 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                 
                 <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs sm:text-sm text-stone-600 dark:text-stone-300 mb-3">
                   <span>المؤلف: <strong className="text-stone-900 dark:text-white">{book.author}</strong></span>
-                  <span>الناشر: <strong className="text-stone-900 dark:text-white">{book.publisher}</strong></span>
+                  <span className="flex items-center gap-1.5">
+                    <span>الناشر:</span>
+                    <strong className="text-stone-900 dark:text-white">{book.publisher}</strong>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('publisher')}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-300/40 hover:bg-teal-200 transition-colors cursor-pointer"
+                      title="فضاء التواصل المباشر مع دار النشر"
+                    >
+                      <MessageCircle className="w-3 h-3 text-teal-600" />
+                      <span>تواصل مع الناشر 💬</span>
+                    </button>
+                  </span>
                   <span>اللغة: <strong className="text-stone-900 dark:text-white">{book.language}</strong></span>
                 </div>
 
@@ -422,6 +452,17 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>روّج للكتاب واربح عمولة 🎁</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('publisher')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                activeTab === 'publisher'
+                  ? 'bg-teal-700 text-white shadow-sm font-black'
+                  : 'text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 dark:hover:bg-teal-900/60'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5 text-amber-400" />
+              <span>فضاء التواصل مع الناشر 🏛️</span>
             </button>
           </div>
 
@@ -812,6 +853,338 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                 onQuickBinance={onQuickBinance}
                 onQuickBaridiMob={onQuickBaridiMob}
               />
+            </div>
+          )}
+
+          {/* TAB 6: CONTACT PUBLISHER SPACE */}
+          {activeTab === 'publisher' && (
+            <div className="space-y-6">
+
+              {/* Publisher Identity Card */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-teal-900/10 via-stone-50 to-amber-500/10 dark:from-slate-800 dark:to-slate-800/80 border border-teal-500/20 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="p-2 rounded-xl bg-teal-700 text-white shadow-xs">
+                        <Building2 className="w-5 h-5" />
+                      </span>
+                      <div>
+                        <h4 className="font-black text-base text-stone-900 dark:text-white">
+                          {publisherProfile.name}
+                        </h4>
+                        <span className="text-xs text-teal-700 dark:text-teal-400 font-mono font-bold">
+                          رقم الاعتماد والرخصة الوطنية: {publisherProfile.licenseNumber}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActivePublisherBook(book)}
+                    className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+                    title="فتح فضاء المراسلة في نافذة مخصصة كاملة"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>تكبير نافذة التواصل المباشر</span>
+                  </button>
+                </div>
+
+                <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                  {publisherProfile.aboutPublisher}
+                </p>
+
+                {/* Publisher Quick Contacts */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 flex items-center gap-2.5">
+                    <MapPin className="w-4 h-4 text-teal-600 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-[10px] text-stone-400 block">العنوان والمقر:</span>
+                      <strong className="text-stone-800 dark:text-stone-200 truncate block">{publisherProfile.city} — {publisherProfile.address}</strong>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 flex items-center gap-2.5">
+                    <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="text-[10px] text-stone-400 block">الهاتف المعتمد:</span>
+                      <a href={`tel:${publisherProfile.officialPhone}`} dir="ltr" className="text-stone-800 dark:text-stone-200 font-mono font-bold hover:underline block">
+                        {publisherProfile.officialPhone}
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 flex items-center gap-2.5">
+                    <Mail className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-[10px] text-stone-400 block">البريد الإلكتروني:</span>
+                      <a href={`mailto:${publisherProfile.officialEmail}`} className="text-teal-700 dark:text-teal-400 font-mono hover:underline truncate block">
+                        {publisherProfile.officialEmail}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 pt-2 border-t border-stone-200/60 dark:border-slate-700">
+                  <span>المسؤول المباشر: <strong>{publisherProfile.contactPerson}</strong> ({publisherProfile.contactPersonRole})</span>
+                  <span>متوسط وقت الرد: <strong className="text-teal-700 dark:text-teal-400">خلال {publisherProfile.avgResponseHours} ساعة</strong></span>
+                </div>
+              </div>
+
+              {/* In-Modal Inquiry Form */}
+              <div className="p-5 rounded-2xl bg-stone-50 dark:bg-slate-800/80 border border-stone-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black text-stone-900 dark:text-white flex items-center gap-2">
+                    <Send className="w-4 h-4 text-teal-600" />
+                    <span>إرسال استفسار أو طلب رسمي للناشر</span>
+                  </h4>
+                  <span className="text-xs text-teal-700 dark:text-teal-400 font-medium">
+                    يتم تحويل الرسالة لقسم التوزيع والنشر مباشرة
+                  </span>
+                </div>
+
+                {pubSuccess ? (
+                  <div className="p-4 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-between gap-2 border border-emerald-300 dark:border-emerald-800">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>تم إرسال رسالتك لدار النشر بنجاح! سيتم إشعارك بالرد الرسمي فوراً.</span>
+                    </div>
+                    <button
+                      onClick={() => setPubSuccess(false)}
+                      className="text-[11px] text-emerald-900 dark:text-emerald-200 underline cursor-pointer"
+                    >
+                      إرسال استفسار آخر
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!pubMessageText.trim() || !pubSenderName.trim()) return;
+
+                      setPubSending(true);
+                      const res = sendPublisherMessage({
+                        bookId: book.id,
+                        bookTitle: book.title,
+                        publisherName: book.publisher,
+                        senderName: pubSenderName.trim(),
+                        senderEmail: pubSenderEmail.trim(),
+                        senderPhone: pubSenderPhone.trim(),
+                        category: pubCategory,
+                        subject: pubSubject.trim(),
+                        message: pubMessageText.trim(),
+                      });
+
+                      setPubSending(false);
+                      if (res.success) {
+                        setPubSuccess(true);
+                        setPubMessageText('');
+                      } else {
+                        alert(res.error || 'حدث خطأ في الإرسال');
+                      }
+                    }}
+                    className="space-y-3"
+                  >
+                    {/* Category Selection */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                        نوع وغرض الاستفسار:
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: 'reader_question', label: 'استفسار عام عن الكتاب' },
+                          { id: 'bulk_order', label: 'طلب توريد كميات جملة' },
+                          { id: 'rights_inquiry', label: 'حقوق الترجمة والنشر' },
+                          { id: 'press_interview', label: 'تغطية إعلامية ومناقشة' },
+                        ].map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setPubCategory(cat.id as any)}
+                            className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              pubCategory === cat.id
+                                ? 'bg-teal-700 text-white border-teal-700 shadow-xs'
+                                : 'bg-white dark:bg-slate-900 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-slate-700 hover:border-teal-400'
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Sender Info Inputs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-600 dark:text-stone-400 mb-1">
+                          اسمك أو اسم الهيئة:
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={pubSenderName}
+                          onChange={(e) => setPubSenderName(e.target.value)}
+                          placeholder="الاسم الكامل"
+                          className="w-full p-2 rounded-xl text-xs border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-600 dark:text-stone-400 mb-1">
+                          البريد الإلكتروني للتواصل:
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={pubSenderEmail}
+                          onChange={(e) => setPubSenderEmail(e.target.value)}
+                          placeholder="email@example.com"
+                          className="w-full p-2 rounded-xl text-xs border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-600 dark:text-stone-400 mb-1">
+                          رقم الهاتف / الواتساب:
+                        </label>
+                        <input
+                          type="text"
+                          value={pubSenderPhone}
+                          onChange={(e) => setPubSenderPhone(e.target.value)}
+                          placeholder="0652206947"
+                          dir="ltr"
+                          className="w-full p-2 rounded-xl text-xs border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Quick Templates */}
+                    <div className="space-y-1">
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400 block font-medium">
+                        نماذج رسائل جاهزة سريعة:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          'نرجو تزويدنا بعرض سعر لطلب 50 نسخة ورقية من هذا الكتاب للمكتبة الجامعية.',
+                          'استفسار بشأن توفر حقوق نشر وتوزيع الترجمة الفرنسية أو الإنجليزية لهذا العنوان.',
+                          'طلب توفير شهادة ملكية رقمية ونسخة موقعة من الكاتب ودار النشر للمؤتمر.',
+                        ].map((template, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setPubMessageText(template);
+                              if (idx === 0) setPubCategory('bulk_order');
+                              if (idx === 1) setPubCategory('rights_inquiry');
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-[11px] bg-white dark:bg-slate-900 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-slate-700 hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-right"
+                          >
+                            💡 {template.slice(0, 36)}...
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Subject */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 dark:text-stone-400 mb-1">
+                        موضوع المراسلة:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={pubSubject}
+                        onChange={(e) => setPubSubject(e.target.value)}
+                        className="w-full p-2 rounded-xl text-xs border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-900 dark:text-white"
+                      />
+                    </div>
+
+                    {/* Message Body */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 dark:text-stone-400 mb-1">
+                        تفاصيل الرسالة والاستفسار:
+                      </label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={pubMessageText}
+                        onChange={(e) => setPubMessageText(e.target.value)}
+                        placeholder="اكتب هنا كافة تفاصيل استفسارك أو طلبك الموجه لدار النشر..."
+                        className="w-full p-2.5 rounded-xl text-xs border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="submit"
+                        disabled={pubSending}
+                        className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{pubSending ? 'جاري الإرسال...' : 'إرسال الرسالة إلى دار النشر ✉️'}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              {/* Message History for this book */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-teal-600" />
+                  <span>سجل المراسلات والردود الخاصة بهذا الكتاب ({publisherMessages.filter(m => m.bookId === book.id).length})</span>
+                </h4>
+
+                {publisherMessages.filter(m => m.bookId === book.id).length === 0 ? (
+                  <p className="text-xs text-stone-500 dark:text-stone-400 p-4 rounded-xl bg-stone-50 dark:bg-slate-800 text-center">
+                    لا توجد مراسلات سابقة مسجلة لهذا العنوان حتى الآن. استفسارك الجديد سيظهر هنا فور إرساله.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {publisherMessages
+                      .filter((m) => m.bookId === book.id)
+                      .map((msg) => (
+                        <div
+                          key={msg.id}
+                          className="p-4 rounded-xl bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 space-y-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <strong className="text-stone-900 dark:text-white">{msg.subject}</strong>
+                              <span className="text-[10px] text-stone-400">{new Date(msg.createdAt).toLocaleDateString('ar-DZ')}</span>
+                            </div>
+                            {msg.status === 'replied' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                تم الرد الرسمي
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                قيد المعالجة
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-stone-700 dark:text-stone-300 leading-relaxed">
+                            {msg.message}
+                          </p>
+
+                          {msg.publisherReply && (
+                            <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 mt-2 text-xs">
+                              <div className="flex items-center justify-between font-bold text-teal-800 dark:text-teal-200 mb-1">
+                                <span>رد دار النشر ({msg.publisherReply.responderName}):</span>
+                                <span className="text-[10px] font-mono text-stone-400">{new Date(msg.publisherReply.repliedAt).toLocaleDateString('ar-DZ')}</span>
+                              </div>
+                              <p className="text-stone-800 dark:text-stone-200 leading-relaxed">
+                                {msg.publisherReply.text}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 

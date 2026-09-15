@@ -3,7 +3,7 @@ import {
   BookOpen, ShoppingBag, PlusCircle, MessageSquare, CreditCard, 
   Users, Crown, Shield, Globe, Sun, Moon, Sparkles, LogIn, LogOut, 
   ChevronDown, Settings, DollarSign, Award, CheckCircle2, ShieldCheck,
-  Gift
+  Gift, Building2
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { SUPPORTED_CURRENCIES } from '../utils/currencies';
@@ -112,6 +112,14 @@ export const Navbar: React.FC = () => {
             >
               <Users className="w-4 h-4 text-indigo-500" />
               <span>الفريق</span>
+            </button>
+            <button 
+              onClick={() => setActiveModal('publisher_contact')}
+              className="px-3 py-2 rounded-xl hover:bg-stone-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="فضاء التواصل المباشر مع دور النشر الجزائرية والعالمية"
+            >
+              <Building2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <span>فضاء دور النشر 🏛️</span>
             </button>
             <button 
               onClick={() => setActiveModal('promo')}

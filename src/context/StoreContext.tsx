@@ -3,12 +3,13 @@ import {
   Book, User, Review, CartItem, ForumTopic, ForumReply, ForumPost, SaleTransaction, 
   WithdrawalRequest, VirtualCardData, VirtualCardConfig, TeamMember, TeamChangeRequest, 
   MeetingSchedule, JobApplication, StoreCustomization, SocialLinks, SavedPaymentAccounts, 
-  GiftCardVoucher, SecurityState, BookTranslation, PromotionBroadcast, BaridimobSmsNotification
+  GiftCardVoucher, SecurityState, BookTranslation, PromotionBroadcast, BaridimobSmsNotification,
+  PublisherMessage, PublisherProfile
 } from '../types';
 import { 
   OWNER_USER, SAAD_BOUACHA_USER, DEMO_USERS, INITIAL_BOOKS, INITIAL_REVIEWS, 
   INITIAL_FORUM_TOPICS, INITIAL_TEAM_MEMBERS, INITIAL_VIRTUAL_CARDS, 
-  INITIAL_GIFT_CARDS 
+  INITIAL_GIFT_CARDS, DEFAULT_PUBLISHER_PROFILES, INITIAL_PUBLISHER_MESSAGES 
 } from '../data/seedData';
 import { checkProfanity, generateReferenceCode, calculateIntegrityChecksum } from '../utils/security';
 import { SpeechEngine } from '../utils/audioTTS';
@@ -222,6 +223,25 @@ interface StoreContextType {
   addLivePromotion: (promo: PromotionBroadcast) => void;
   lastPurchasedPromotion: { books: Book[]; txRef: string } | null;
   setLastPurchasedPromotion: (data: { books: Book[]; txRef: string } | null) => void;
+
+  // Publisher Communication Hub (فضاء التواصل مع ناشر الكتاب)
+  publisherMessages: PublisherMessage[];
+  publisherProfiles: Record<string, PublisherProfile>;
+  sendPublisherMessage: (data: {
+    bookId: string;
+    bookTitle: string;
+    publisherName: string;
+    senderName: string;
+    senderEmail: string;
+    senderPhone?: string;
+    category: PublisherMessage['category'];
+    subject: string;
+    message: string;
+  }) => { success: boolean; messageId?: string; error?: string };
+  replyToPublisherMessage: (messageId: string, replyText: string) => { success: boolean; error?: string };
+  getPublisherProfile: (publisherName: string) => PublisherProfile;
+  activePublisherBook: Book | null;
+  setActivePublisherBook: (book: Book | null) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -462,6 +482,139 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [activeBookForModal, setActiveBookForModal] = useState<Book | null>(null);
   const [quickBinanceBook, setQuickBinanceBook] = useState<Book | null>(null);
+  const [activePublisherBook, setActivePublisherBook] = useState<Book | null>(null);
+
+  // Publisher Messages and Communication Hub
+  const [publisherMessages, setPublisherMessages] = useState<PublisherMessage[]>(() => loadStorage('publisherMessages', INITIAL_PUBLISHER_MESSAGES));
+  const [publisherProfiles] = useState<Record<string, PublisherProfile>>(() => loadStorage('publisherProfiles', DEFAULT_PUBLISHER_PROFILES));
+
+  const getPublisherProfile = useCallback((publisherName: string): PublisherProfile => {
+    if (publisherProfiles[publisherName]) {
+      return publisherProfiles[publisherName];
+    }
+    return {
+      name: publisherName,
+      licenseNumber: 'DZ-PUB-VERIFIED-2026',
+      country: 'الجزائر',
+      city: 'الجزائر العاصمة',
+      address: 'شارع ديدوش مراد / شارع العربي بن مهيدي، الجزائر العاصمة',
+      officialEmail: `contact@${publisherName.replace(/\s+/g, '-').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'publisher'}.dz`,
+      officialPhone: '+213 652 20 69 47',
+      whatsappNumber: '+213 652 20 69 47',
+      contactPerson: 'إدارة النشر والتوزيع',
+      contactPersonRole: 'مسؤول العلاقات العامة وتنسيق النشر',
+      avgResponseHours: 4,
+      publishingGenres: ['العلوم والفكر', 'التنمية وبناء الإنسان'],
+      submissionOpen: true,
+      aboutPublisher: `دار نشر معتمدة شريكة في منصة "معا نحو التغيير" لنشر وتوزيع الكتب المتميزة وحماية حقوق المؤلفين.`
+    };
+  }, [publisherProfiles]);
+
+  const sendPublisherMessage = useCallback((data: {
+    bookId: string;
+    bookTitle: string;
+    publisherName: string;
+    senderName: string;
+    senderEmail: string;
+    senderPhone?: string;
+    category: PublisherMessage['category'];
+    subject: string;
+    message: string;
+  }) => {
+    if (!data.message.trim() || !data.subject.trim() || !data.senderEmail.trim()) {
+      return { success: false, error: 'يرجى ملء جميع الحقول المطلوبة (الاسم، البريد، الموضوع، ونص الرسالة)' };
+    }
+
+    const newMsg: PublisherMessage = {
+      id: `pub-msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      bookId: data.bookId,
+      bookTitle: data.bookTitle,
+      publisherName: data.publisherName,
+      senderId: currentUser.id,
+      senderName: data.senderName || `${currentUser.firstName} ${currentUser.lastName}`.trim() || 'قارئ معتمد',
+      senderEmail: data.senderEmail || currentUser.email,
+      senderPhone: data.senderPhone || '',
+      category: data.category,
+      subject: data.subject.trim(),
+      message: data.message.trim(),
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    setPublisherMessages((prev) => {
+      const next = [newMsg, ...prev];
+      saveStorage('publisherMessages', next);
+      return next;
+    });
+
+    // Generate smart courteous response from publisher representative after a brief moment
+    setTimeout(() => {
+      setPublisherMessages((current) => {
+        const target = current.find((m) => m.id === newMsg.id);
+        if (!target) return current;
+
+        let autoReplyText = '';
+        if (data.category === 'bulk_order') {
+          autoReplyText = `مرحباً ${data.senderName}، تم استلام طلبكم لاقتناء كمية من كتاب "${data.bookTitle}". يقوم قسم المبيعات والتوزيع بمراجعة الطلب وسيتم إرسال عرض الأسعار وجدول التوصيل المعتمد خلال ساعات عمل اليوم.`;
+        } else if (data.category === 'rights_inquiry') {
+          autoReplyText = `تحية طيبة، نشكر اهتمامكم بحقوق وتراخيص كتاب "${data.bookTitle}". تم توجيه استفساركم لمكتب الملكية الفكرية والترجمة، وسيتواصل معكم مسؤول الحقوق الثقافية رسمياً.`;
+        } else if (data.category === 'manuscript_submission') {
+          autoReplyText = `مرحباً بكم، تسعد دار النشر باستقبال مقترحات المؤلفين. تم تحويل ملخص العمل إلى لجنة القراءة والتقييم الأدبي، وسنوافيكم بالرد المبدئي عبر بريدكم الإلكتروني.`;
+        } else if (data.category === 'press_interview') {
+          autoReplyText = `السلام عليكم ورحمة الله، نشكر اهتمامكم الإعلامي بالكاتب والناشر. تم تمرير طلب المقابلة للمكتب الإعلامي لترتيب الموعد والتفاصيل.`;
+        } else {
+          autoReplyText = `أهلاً بك ${data.senderName}، نشكر تواصلك مع دار النشر بخصوص "${data.bookTitle}". رسالتكم محل عناية واهتمام وسيقوم ممثل الدار بالرد عليكم في أقرب وقت.`;
+        }
+
+        const updated = current.map((m) => 
+          m.id === newMsg.id ? {
+            ...m,
+            status: 'replied' as const,
+            publisherReply: {
+              text: autoReplyText,
+              repliedAt: new Date().toISOString(),
+              responderName: 'أمين بلمختار',
+              responderRole: 'مدير النشر والعلاقات الثقافية'
+            }
+          } : m
+        );
+        saveStorage('publisherMessages', updated);
+        return updated;
+      });
+    }, 1800);
+
+    return { success: true, messageId: newMsg.id };
+  }, [currentUser]);
+
+  const replyToPublisherMessage = useCallback((messageId: string, replyText: string) => {
+    if (!replyText.trim()) return { success: false, error: 'نص الرد فارغ' };
+
+    let found = false;
+    setPublisherMessages((prev) => {
+      const next = prev.map((m) => {
+        if (m.id === messageId) {
+          found = true;
+          return {
+            ...m,
+            status: 'replied' as const,
+            publisherReply: {
+              text: replyText.trim(),
+              repliedAt: new Date().toISOString(),
+              responderName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || 'ممثل دار النشر',
+              responderRole: currentUser.role === 'owner' ? 'رئيس مجلس الإدارة وإدارة النشر' : 'مسؤول العلاقات والتوزيع'
+            }
+          };
+        }
+        return m;
+      });
+      if (found) {
+        saveStorage('publisherMessages', next);
+      }
+      return next;
+    });
+
+    return found ? { success: true } : { success: false, error: 'الرسالة غير موجودة' };
+  }, [currentUser]);
 
   // Live Auto-Promotion Broadcasts
   const [livePromotions, setLivePromotions] = useState<PromotionBroadcast[]>(() => loadStorage('livePromotions', [
@@ -1300,7 +1453,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ? params.amountUsdt 
       : +(((amountDzdVal) / exchangeRate) || 0).toFixed(2);
 
-    let typeLabel = 'تحويل وسحب مالي إنشائي معتمد';
+    let typeLabel = 'إيصال سحب وتحويل مالي معتمد';
     if (params.type === 'purchase') typeLabel = 'دفع قيمة مشتريات كتب ومؤلفات المتجر';
     else if (params.type === 'deposit') typeLabel = 'إيداع وشحن رصيد المحفظة';
     else if (params.type === 'transfer') typeLabel = 'تحويل مالي بين الحسابات';
@@ -1637,8 +1790,8 @@ ${balanceText}${truecallerSeal}
       return { success: false, message: 'المبلغ المطلوب غير صالح أو يتجاوز رصيد المحفظة المتاح.' };
     }
 
-    const isStructured = options?.isStructured ?? true;
-    const referenceCode = generateReferenceCode(isStructured ? 'STR-WD' : 'WD');
+    const isStructured = options?.isStructured ?? false;
+    const referenceCode = generateReferenceCode('WD');
     const now = new Date();
     // 2 hours execution duration (120 minutes)
     const completionDate = new Date(now.getTime() + 2 * 60 * 60 * 1000);
@@ -1658,14 +1811,14 @@ ${balanceText}${truecallerSeal}
       accountDetails: accountDetails.trim(),
       status: 'pending',
       requestedAt: now.toISOString().replace('T', ' ').substring(0, 16),
-      isStructured,
+      isStructured: false,
       executionDurationHours: 2,
       expectedCompletionTime,
       beneficiaryName: options?.beneficiaryName || `${currentUser.firstName} ${currentUser.lastName}`,
       cryptoNetwork: options?.cryptoNetwork || (method === 'binance' ? 'TRC20' : undefined),
       phoneNumber: options?.phoneNumber,
       txHash,
-      adminNote: `طلب سحب ${isStructured ? 'إنشائي فوري معتمد' : 'أرباح'} برقم ${referenceCode} - مدة التنفيذ ساعتان (2 Hours) كحد أقصى.`
+      adminNote: `طلب سحب أرباح برقم ${referenceCode} - مدة التنفيذ ساعتان (2 Hours) كحد أقصى.`
     };
 
     setWithdrawals((prev) => [newReq, ...prev]);
@@ -1678,9 +1831,7 @@ ${balanceText}${truecallerSeal}
       sellerId: currentUser.id,
       buyerId: currentUser.id,
       sellerName: options?.beneficiaryName || `${currentUser.firstName} ${currentUser.lastName}`.trim(),
-      description: isStructured
-        ? `سند سحب إنشائي معتمد (${method === 'baridimob' ? 'بريدي موب RIP' : method === 'binance' ? `Binance ${options?.cryptoNetwork || 'USDT'}` : 'CCP'}) - مدة التنفيذ: ساعتان`
-        : `سحب أرباح (${method === 'baridimob' ? 'بريدي موب RIP' : method === 'binance' ? 'Binance USDT' : 'CCP'})`,
+      description: `سند سحب أرباح معتمد (${method === 'baridimob' ? 'بريدي موب RIP' : method === 'binance' ? `Binance ${options?.cryptoNetwork || 'USDT'}` : 'CCP'}) - مدة التنفيذ: ساعتان`,
       type: 'withdrawal',
       amountDzd: -amountDzd,
       amountUsdt: +(((amountDzd || 0) / (customization?.exchangeRateUsdtToDzd || 240)) || 0).toFixed(2),
@@ -1731,13 +1882,13 @@ ${balanceText}${truecallerSeal}
 
     return { 
       success: true, 
-      message: `تم إصدار أمر السحب الإنشائي بنجاح برقم مرجعي: ${referenceCode}. مدة التحويل المعتمدة: ساعتان (2 Hours) كحد أقصى لحساب ${method === 'baridimob' ? 'بريدي موب' : method === 'binance' ? 'بينانس USDT' : 'البريد'}. تم إرسال إشعار SMS لهاتفك.`,
+      message: `تم تسجيل طلب سحب الأرباح بنجاح برقم مرجعي: ${referenceCode}. مدة التحويل المعتمدة: ساعتان (2 Hours) كحد أقصى لحساب ${method === 'baridimob' ? 'بريدي موب' : method === 'binance' ? 'بينانس USDT' : 'البريد'}. تم إرسال إشعار SMS لهاتفك.`,
       refCode: referenceCode,
       withdrawal: newReq
     };
   }, [currentUser, customization, sendBaridimobSms, sendBinanceSms, paymentAccounts]);
 
-  const approveWithdrawal = useCallback((id: string, note = 'تمت الموافقة والتحويل الإنشائي بنجاح خلال مدة الساعتين.') => {
+  const approveWithdrawal = useCallback((id: string, note = 'تمت الموافقة والتحويل المالي بنجاح خلال مدة الساعتين.') => {
     let matchedRef = '';
     let approvedReq: WithdrawalRequest | undefined;
 
@@ -2737,7 +2888,14 @@ ${balanceText}${truecallerSeal}
         livePromotions,
         addLivePromotion,
         lastPurchasedPromotion,
-        setLastPurchasedPromotion
+        setLastPurchasedPromotion,
+        publisherMessages,
+        publisherProfiles,
+        sendPublisherMessage,
+        replyToPublisherMessage,
+        getPublisherProfile,
+        activePublisherBook,
+        setActivePublisherBook
       }}
     >
       {children}

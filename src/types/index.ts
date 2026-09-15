@@ -71,6 +71,8 @@ export interface Book {
   license: InternationalLicense;
   salesCount: number;
   downloadsCount: number;
+  stockCount?: number;
+  lowStockThreshold?: number;
   createdAt: string;
 }
 
@@ -195,7 +197,7 @@ export interface WithdrawalRequest {
   requestedAt: string;
   processedAt?: string;
   adminNote?: string;
-  isStructured?: boolean; // ميزة السحب الإنشائي المعتمد
+  isStructured?: boolean;
   executionDurationHours?: number; // مدة السحب: ساعتان
   expectedCompletionTime?: string; // وقت إتمام التحويل المتوقع
   beneficiaryName?: string;
@@ -367,4 +369,43 @@ export interface PromotionBroadcast {
   referralLink: string;
   timestamp: string;
   txRef?: string;
+}
+
+export interface PublisherMessage {
+  id: string;
+  bookId: string;
+  bookTitle: string;
+  publisherName: string;
+  senderId?: string;
+  senderName: string;
+  senderEmail: string;
+  senderPhone?: string;
+  category: 'rights_inquiry' | 'bulk_order' | 'manuscript_submission' | 'reader_question' | 'press_interview' | 'distribution';
+  subject: string;
+  message: string;
+  createdAt: string;
+  status: 'pending' | 'reviewed' | 'replied';
+  publisherReply?: {
+    text: string;
+    repliedAt: string;
+    responderName: string;
+    responderRole: string;
+  };
+}
+
+export interface PublisherProfile {
+  name: string;
+  licenseNumber: string;
+  country: string;
+  city: string;
+  address: string;
+  officialEmail: string;
+  officialPhone: string;
+  whatsappNumber: string;
+  contactPerson: string;
+  contactPersonRole: string;
+  avgResponseHours: number;
+  publishingGenres: string[];
+  submissionOpen: boolean;
+  aboutPublisher: string;
 }

@@ -1,4 +1,4 @@
-import { Book, User, Review, ForumTopic, TeamMember, VirtualCardData, GiftCardVoucher } from '../types';
+import { Book, User, Review, ForumTopic, TeamMember, VirtualCardData, GiftCardVoucher, PublisherMessage, PublisherProfile } from '../types';
 
 export const OWNER_USER: User = {
   id: 'user-lokmane-owner',
@@ -139,6 +139,8 @@ export const INITIAL_BOOKS: Book[] = [
     },
     salesCount: 142,
     downloadsCount: 890,
+    stockCount: 4,
+    lowStockThreshold: 10,
     createdAt: '2025-01-10',
   },
   {
@@ -184,6 +186,8 @@ export const INITIAL_BOOKS: Book[] = [
     },
     salesCount: 98,
     downloadsCount: 650,
+    stockCount: 28,
+    lowStockThreshold: 10,
     createdAt: '2025-02-01',
   },
   {
@@ -221,6 +225,8 @@ export const INITIAL_BOOKS: Book[] = [
     },
     salesCount: 64,
     downloadsCount: 420,
+    stockCount: 2,
+    lowStockThreshold: 8,
     createdAt: '2025-01-20',
   },
   {
@@ -257,6 +263,8 @@ export const INITIAL_BOOKS: Book[] = [
     },
     salesCount: 45,
     downloadsCount: 310,
+    stockCount: 0,
+    lowStockThreshold: 5,
     createdAt: '2025-02-15',
   },
   {
@@ -293,6 +301,8 @@ export const INITIAL_BOOKS: Book[] = [
     },
     salesCount: 77,
     downloadsCount: 512,
+    stockCount: 18,
+    lowStockThreshold: 8,
     createdAt: '2025-01-28',
   }
 ];
@@ -536,5 +546,146 @@ export const INITIAL_GIFT_CARDS: GiftCardVoucher[] = [
     amountUsdt: 10,
     isUsed: false,
     createdAt: '2025-02-20'
+  }
+];
+
+export const DEFAULT_PUBLISHER_PROFILES: Record<string, PublisherProfile> = {
+  'دار النشر والتوزيع - معا نحو التغيير': {
+    name: 'دار النشر والتوزيع - معا نحو التغيير',
+    licenseNumber: 'DZ-PUB-2024-9981',
+    country: 'الجزائر',
+    city: 'الجزائر العاصمة',
+    address: 'شارع ديدوش مراد / شارع العربي بن مهيدي، الجزائر الوسطى',
+    officialEmail: 'publishing@together-change.com',
+    officialPhone: '+213 652 20 69 47',
+    whatsappNumber: '+213 652 20 69 47',
+    contactPerson: 'أمين بلمختار',
+    contactPersonRole: 'مدير النشر والعلاقات الثقافية والإعلامية',
+    avgResponseHours: 2,
+    publishingGenres: ['التنمية الذاتية', 'الفكر والنهضة', 'التحول الرقمي', 'الدراسات الإنسانية'],
+    submissionOpen: true,
+    aboutPublisher: 'الدار الرسمية التابعة لمنصة "معا نحو التغيير"، متخصصة في نشر وتوزيع المؤلفات الرائدة في الفكر والتطوير والعلوم الإنسانية، مع تقديم خدمات الترجمة العالمية والإنتاج الصوتي الرقمي.'
+  },
+  'منشورات الابتكار والتطوير': {
+    name: 'منشورات الابتكار والتطوير',
+    licenseNumber: 'DZ-PUB-2023-7412',
+    country: 'الجزائر',
+    city: 'وهران',
+    address: 'حي العقيد لطفي، المجمع المعرفي، وهران',
+    officialEmail: 'contact@innovation-dz.org',
+    officialPhone: '+213 550 44 12 30',
+    whatsappNumber: '+213 550 44 12 30',
+    contactPerson: 'م. يونس بلحاج',
+    contactPersonRole: 'مسؤول النشر التقني والريادي',
+    avgResponseHours: 4,
+    publishingGenres: ['الذكاء الاصطناعي', 'التكنولوجيا المالية', 'إدارة الابتكار'],
+    submissionOpen: true,
+    aboutPublisher: 'دار متخصصة في الكتب العلمية والتقنية وإصدارات عصر الرقمنة والذكاء الاصطناعي وبناء القدرات المستقبلية.'
+  },
+  'دار الحكمة للنشر': {
+    name: 'دار الحكمة للنشر',
+    licenseNumber: 'DZ-PUB-2021-3320',
+    country: 'الجزائر',
+    city: 'قسنطينة',
+    address: 'المدينة الجديدة علي منجلي، مجمع النور، قسنطينة',
+    officialEmail: 'info@dar-alhikma-dz.com',
+    officialPhone: '+213 561 33 22 11',
+    whatsappNumber: '+213 561 33 22 11',
+    contactPerson: 'د. رشيد بن عبد الله',
+    contactPersonRole: 'المشرف العام على النشر',
+    avgResponseHours: 6,
+    publishingGenres: ['علم النفس السلوكي', 'بناء العادات', 'التربية والتعليم'],
+    submissionOpen: true,
+    aboutPublisher: 'دار نشر عريقة تعنى بنشر كتب التربية وعلم النفس والتنمية المستدامة، مع شراكات توزيع في العالم العربي.'
+  },
+  'المركز المغاربي للدراسات': {
+    name: 'المركز المغاربي للدراسات',
+    licenseNumber: 'DZ-PUB-2022-5509',
+    country: 'الجزائر',
+    city: 'تلمسان',
+    address: 'حي الفنون والثقافة، تلمسان',
+    officialEmail: 'contact@maghreb-studies.dz',
+    officialPhone: '+213 43 20 18 90',
+    whatsappNumber: '+213 43 20 18 90',
+    contactPerson: 'د. سامية زروقي',
+    contactPersonRole: 'منسقة الاتصال والتبادل الأكاديمي',
+    avgResponseHours: 12,
+    publishingGenres: ['الفلسفة والمنطق', 'الدراسات الاستشرافية', 'العلوم الإنسانية'],
+    submissionOpen: true,
+    aboutPublisher: 'مركز أبحاث ونشر أكاديمي معني بالدراسات الفلسفية المعاصرة وتوثيق الفكر المغاربي والدولي.'
+  },
+  'دار العلوم الإنسانية': {
+    name: 'دار العلوم الإنسانية',
+    licenseNumber: 'DZ-PUB-2020-1845',
+    country: 'الجزائر',
+    city: 'سطيف',
+    address: 'شارع 8 ماي 1945، مجمع الكتاب، سطيف',
+    officialEmail: 'publications@humanities-dz.net',
+    officialPhone: '+213 36 84 55 20',
+    whatsappNumber: '+213 36 84 55 20',
+    contactPerson: 'أ. مراد سلطاني',
+    contactPersonRole: 'مدير شؤون المؤلفين والتوزيع',
+    avgResponseHours: 8,
+    publishingGenres: ['علم النفس', 'علم الاجتماع', 'إدارة الأزمات'],
+    submissionOpen: true,
+    aboutPublisher: 'دار نشر رائدة في نشر الأبحاث النفسية والاجتماعية وتوفير المراجع المتخصصة للجامعات والمراكز البحثية.'
+  }
+};
+
+export const INITIAL_PUBLISHER_MESSAGES: PublisherMessage[] = [
+  {
+    id: 'pub-msg-1',
+    bookId: 'book-owner-1',
+    bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+    publisherName: 'دار النشر والتوزيع - معا نحو التغيير',
+    senderId: 'user-4',
+    senderName: 'كريم الجزائري',
+    senderEmail: 'karim.reader@gmail.com',
+    senderPhone: '0555123456',
+    category: 'bulk_order',
+    subject: 'طلب اقتناء دفعة ورقية مطبوعة للنادي الثقافي الطلابي (50 نسخة)',
+    message: 'السلام عليكم ورحمة الله، نحن نادي القراءة الجامعي نود اقتناء 50 نسخة ورقية معتمدة من كتاب "معا نحو التغيير" لتوزيعها على الطلبة في ورشة العمل القادمة، نرجو إفادتنا بإمكانية الشحن إلى ولاية سطيف وتفاصيل الدفع.',
+    createdAt: '2026-03-10T11:30:00Z',
+    status: 'replied',
+    publisherReply: {
+      text: 'وعليكم السلام ورحمة الله أخي كريم، مرحباً بكم وبناديكم الثقافي. يسعد دار النشر توفير الدفعة بخصم تشجيعي 20% للطلبة مع إرسال إهداء موقع من المؤلف الأستاذ لقمان ياسين أبختي. لقد تم التواصل معكم هاتفياً لترتيب الشحن السريع.',
+      repliedAt: '2026-03-10T13:45:00Z',
+      responderName: 'أمين بلمختار',
+      responderRole: 'مدير النشر والعلاقات الثقافية'
+    }
+  },
+  {
+    id: 'pub-msg-2',
+    bookId: 'book-owner-1',
+    bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+    publisherName: 'دار النشر والتوزيع - معا نحو التغيير',
+    senderName: 'د. ليلى عماري',
+    senderEmail: 'dr.leila.amari@univ-alger.dz',
+    senderPhone: '0661987654',
+    category: 'rights_inquiry',
+    subject: 'استفسار حول الترخيص الأكاديمي لإدراج مقتطفات في مقرر جامعي',
+    message: 'تحية طيبة للقائمين على الدار، نود إدراج الفصل الأول من الكتاب ضمن القراءات الإثرائية لمقياس مدخل إلى التغيير التنظيمي لطلبة الماستر، نلتمس موافقة الدار الرسمية وتزويدنا برقم الإيداع القانوني.',
+    createdAt: '2026-03-12T09:15:00Z',
+    status: 'replied',
+    publisherReply: {
+      text: 'مرحباً دكتورة ليلى، ترحب الدار بالاستخدام الأكاديمي والتعليمي لهذا العمل النهضوي. تم إرسال كتاب رسمي مختوم بالموافقة على بريدكم الإلكتروني مع تفاصيل الإيداع القانوني وحقوق الملكية الفكرية.',
+      repliedAt: '2026-03-12T10:30:00Z',
+      responderName: 'سارة القاسمي',
+      responderRole: 'مسؤولة العلاقات الثقافية وتدقيق الحقوق'
+    }
+  },
+  {
+    id: 'pub-msg-3',
+    bookId: 'book-owner-2',
+    bookTitle: 'أسرار القيادة والتحول الرقمي 2026',
+    publisherName: 'منشورات الابتكار والتطوير',
+    senderName: 'طارق مزيان',
+    senderEmail: 'tarek.tech@fintech-dz.com',
+    senderPhone: '0770112233',
+    category: 'press_interview',
+    subject: 'دعوة لمشاركة الناشر والمؤلف في مؤتمر وهران للتكنولوجيا المالية',
+    message: 'السلام عليكم، يسرنا توجيه دعوة رسمية لدار النشر والمؤلف لتقديم عرض حول مضامين كتاب التحول الرقمي ضمن جلسات ملتقى الجزائر الرقمية القادم.',
+    createdAt: '2026-03-14T15:20:00Z',
+    status: 'pending'
   }
 ];

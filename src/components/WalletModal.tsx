@@ -70,10 +70,9 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Withdrawal form - No minimum withdrawal limits, 2 hours execution, structured mode
+  // Withdrawal form - No minimum withdrawal limits, 2 hours execution
   const [withdrawAmountDzd, setWithdrawAmountDzd] = useState(currentUser.walletDzd > 0 ? currentUser.walletDzd.toString() : '');
   const [withdrawMethod, setWithdrawMethod] = useState<'baridimob' | 'binance' | 'ccp'>('baridimob');
-  const [isStructuredWithdrawal, setIsStructuredWithdrawal] = useState(true); // ميزة السحب الإنشائي
 
   // BaridiMob dedicated fields
   const [baridimobRip, setBaridimobRip] = useState(paymentAccounts?.baridimobRip || '00799999002847192033');
@@ -141,7 +140,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
     }
 
     const res = requestWithdrawal(amount, withdrawMethod, accountDetailsStr, {
-      isStructured: isStructuredWithdrawal,
+      isStructured: false,
       beneficiaryName: beneficiary,
       cryptoNetwork: network,
       phoneNumber: phone
@@ -175,13 +174,11 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
             ? `بينانس USDT (${w.cryptoNetwork || 'TRC20'})` 
             : 'حساب بريدي CCP',
         transactionRef: w.referenceCode,
-        badgeTitle: w.isStructured ? 'سند صرف وسحب مالي إنشائي معتمد' : 'إيصال سحب مالي معتمد',
+        badgeTitle: 'إيصال وسند سحب مالي معتمد',
         ripNumber: w.method === 'baridimob' ? w.accountDetails : undefined,
         beneficiaryName: w.beneficiaryName || w.authorName,
         items: [{
-          title: w.isStructured
-            ? `سند سحب إنشائي فوري معتمد (مدة التنفيذ: ساعتان ⏱️) • تحويل إلى ${w.method === 'baridimob' ? 'بريدي موب RIP' : w.method === 'binance' ? `بينانس ${w.cryptoNetwork || 'USDT'}` : 'CCP'}`
-            : `سحب أرباح مالية (${w.method.toUpperCase()})`,
+          title: `سند سحب مالي معتمد (مدة التنفيذ: ساعتان ⏱️) • تحويل إلى ${w.method === 'baridimob' ? 'بريدي موب RIP' : w.method === 'binance' ? `بينانس ${w.cryptoNetwork || 'USDT'}` : 'CCP'}`,
           author: customization.presidentName || 'لقمان ياسين أبختي',
           priceDzd: w.amountDzd,
           priceUsdt: safeUsdt,
@@ -528,20 +525,20 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-teal-950 flex items-center gap-1 shadow-sm">
-                            <Zap className="w-3 h-3 fill-current" />
-                            <span>ميزة السحب الإنشائي المعتمد</span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white flex items-center gap-1 shadow-sm">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>سحب مالي فوري ومباشر</span>
                           </span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-teal-500/20 text-teal-300 border border-teal-500/40 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            <span>مدة السحب والتنفيذ: ساعتان (2H) ⏱️</span>
+                            <span>مدة المعالجة: ساعتان كحد أقصى ⏱️</span>
                           </span>
                         </div>
                         <h4 className="font-black text-sm sm:text-base text-white">
                           سحب أرباح الخزينة وإيرادات المبيعات
                         </h4>
                         <p className="text-xs text-stone-300 leading-relaxed mt-1">
-                          قم بسحب أرباحك فوراً عبر <strong className="text-amber-300">بريدي موب (BaridiMob RIP)</strong> أو <strong className="text-amber-300">بينانس (Binance USDT)</strong> بدون حد أدنى مع سند صرف مالي إنشائي معتمد وتتبع لحظي لمدة التنفيذ (ساعتان فقط).
+                          قم بسحب أرباحك فوراً عبر <strong className="text-amber-300">بريدي موب (BaridiMob RIP)</strong> أو <strong className="text-amber-300">بينانس (Binance USDT)</strong> بدون حد أدنى مع سند صرف مالي رسمي معتمد وتتبع لحظي لمعالجة السحب.
                         </p>
                       </div>
                     </div>
@@ -561,41 +558,6 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                         <span>سند صرف رسمي PDF فوري</span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Structured Mode Toggle */}
-                  <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-slate-800/80 border border-amber-200 dark:border-slate-700 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-                        <Layers className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <strong className="text-xs font-black text-stone-900 dark:text-white">
-                            تفعيل وضع "السحب الإنشائي" (Structured Settlement)
-                          </strong>
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200">
-                            موصى به
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-stone-600 dark:text-stone-400">
-                          إصدار سند صرف مالي رسمي مشفر، وتقييد العملية في السجلات المالية المركزية، وتحديد مدة الإيداع بساعتين.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsStructuredWithdrawal(!isStructuredWithdrawal)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        isStructuredWithdrawal ? 'bg-amber-600' : 'bg-stone-300 dark:bg-slate-700'
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          isStructuredWithdrawal ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
                   </div>
 
                   {/* Withdrawal Form */}
@@ -770,7 +732,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
 
                         <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-teal-200/60 dark:border-teal-800/40 text-[11px] text-teal-900 dark:text-teal-200 flex items-center gap-2">
                           <Clock className="w-4 h-4 text-teal-600 shrink-0" />
-                          <span>معالجة إنشائية مباشرة: يصل التحويل إلى حسابك في بريدي موب خلال ساعتين (120 دقيقة) كحد أقصى.</span>
+                          <span>معالجة تحويل مباشرة: يصل التحويل إلى حسابك في بريدي موب خلال ساعتين (120 دقيقة) كحد أقصى.</span>
                         </div>
                       </div>
                     )}
@@ -856,7 +818,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
 
                         <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-amber-200/60 dark:border-amber-800/40 text-[11px] text-amber-900 dark:text-amber-200 flex items-center gap-2">
                           <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                          <span>معالجة إنشائية مشفرة: يتم إرسال رصيد USDT لحسابك على بينانس في مدة أقصاها ساعتان (120 دقيقة).</span>
+                          <span>معالجة تحويل مشفرة: يتم إرسال رصيد USDT لحسابك على بينانس في مدة أقصاها ساعتان (120 دقيقة).</span>
                         </div>
                       </div>
                     )}
@@ -940,7 +902,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                             ) : (
                               <>
                                 <Download className="w-4 h-4" />
-                                <span>تحميل سند الصرف المالي الإنشائي (PDF) الآن</span>
+                                <span>تحميل سند الصرف المالي (PDF) الآن</span>
                               </>
                             )}
                           </button>
@@ -954,7 +916,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                       className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-700 to-teal-800 hover:from-amber-700 hover:to-teal-900 text-white text-xs font-black shadow-lg cursor-pointer transition-all flex items-center justify-center gap-2"
                     >
                       <Zap className="w-4 h-4 fill-current" />
-                      <span>تأكيد طلب السحب الإنشائي (مدة التنفيذ: ساعتان ⏱️)</span>
+                      <span>تأكيد طلب سحب الأرباح (مدة التنفيذ: ساعتان ⏱️)</span>
                     </button>
                   </form>
 
@@ -964,7 +926,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-amber-500" />
                         <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">
-                          سجل ومتابعة طلبات السحب الإنشائي ({userWithdrawals.length})
+                          سجل ومتابعة طلبات السحب ({userWithdrawals.length})
                         </h4>
                       </div>
                       <span className="text-[10px] font-bold text-stone-400">
@@ -974,7 +936,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
 
                     {userWithdrawals.length === 0 ? (
                       <div className="p-6 text-center rounded-2xl bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 text-stone-400 text-xs">
-                        لا توجد طلبات سحب إنشائية مسجلة حتى الآن.
+                        لا توجد طلبات سحب مسجلة حتى الآن.
                       </div>
                     ) : (
                       <div className="space-y-2.5">
@@ -991,11 +953,6 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                                     <span className="font-mono font-bold text-xs text-stone-900 dark:text-white">
                                       {w.referenceCode}
                                     </span>
-                                    {w.isStructured && (
-                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                        ⚡ سحب إنشائي معتمد
-                                      </span>
-                                    )}
                                     <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
                                       {w.method === 'baridimob' ? 'بريدي موب' : w.method === 'binance' ? `بينانس (${w.cryptoNetwork || 'USDT'})` : 'CCP'}
                                     </span>
@@ -1380,7 +1337,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ onClose }) => {
                         <span>سجل إشعارات بريدي موب المرسلة ({smsNotifications.length}):</span>
                       </h4>
                       <span className="text-[10px] text-stone-400">
-                        مدة السحب الإنشائي: ساعتان (120 دقيقة) ⏱️
+                        مدة التحويل المعتمدة: ساعتان (120 دقيقة) ⏱️
                       </span>
                     </div>
 

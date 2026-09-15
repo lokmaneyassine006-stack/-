@@ -29,7 +29,8 @@ export const BookCard: React.FC<BookCardProps> = ({
     playBookAudioTrack, 
     currentUser, 
     deleteBook, 
-    updateBookPrice 
+    updateBookPrice,
+    setActivePublisherBook
   } = useStore();
 
   const [isEditingPrice, setIsEditingPrice] = useState(false);
@@ -161,10 +162,24 @@ export const BookCard: React.FC<BookCardProps> = ({
             {book.title}
           </h3>
 
-          {/* Author */}
-          <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2">
-            تأليف: <span className="font-bold text-stone-800 dark:text-stone-200">{book.author}</span>
-          </p>
+          {/* Author & Publisher Contact */}
+          <div className="flex items-center justify-between text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2 gap-2">
+            <p className="truncate">
+              تأليف: <span className="font-bold text-stone-800 dark:text-stone-200">{book.author}</span>
+            </p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActivePublisherBook(book);
+              }}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-200 hover:underline cursor-pointer shrink-0"
+              title={`تواصل مع الناشر: ${book.publisher}`}
+            >
+              <Building2 className="w-3 h-3 text-amber-500" />
+              <span>الناشر</span>
+            </button>
+          </div>
 
           {/* Description */}
           <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2 leading-relaxed">

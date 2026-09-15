@@ -18,6 +18,7 @@ import { PurchasePromotionTool } from './components/PurchasePromotionTool';
 import { LivePromotionBroadcast } from './components/LivePromotionBroadcast';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { BaridimobSmsModal } from './components/BaridimobSmsModal';
+import { PublisherContactModal } from './components/PublisherContactModal';
 import { Footer } from './components/Footer';
 import { Book } from './types';
 import { BookOpen, Sparkles, FilterX } from 'lucide-react';
@@ -29,7 +30,10 @@ const MainStoreContent: React.FC = () => {
     setActiveModal, 
     isCartOpen, 
     setIsCartOpen,
-    currentUser
+    currentUser,
+    activePublisherBook,
+    setActivePublisherBook,
+    activeBookForModal
   } = useStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -293,6 +297,17 @@ const MainStoreContent: React.FC = () => {
 
       {/* 12. BaridiMob Official SMS Notification Service Modal */}
       <BaridimobSmsModal />
+
+      {/* 13. Publisher Communication Hub Modal (فضاء التواصل مع ناشر الكتاب) */}
+      {(activePublisherBook || (activeModal === 'publisher_contact' && (activeBookForModal || books[0]))) && (
+        <PublisherContactModal
+          book={activePublisherBook || activeBookForModal || books[0]}
+          onClose={() => {
+            setActivePublisherBook(null);
+            if (activeModal === 'publisher_contact') setActiveModal(null);
+          }}
+        />
+      )}
 
     </div>
   );

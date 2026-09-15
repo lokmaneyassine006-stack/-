@@ -5,13 +5,16 @@ import {
   CreditCard, Sparkles, Building2, Zap, BarChart3,
   Crown, Infinity, Gift, Copy, CheckCheck, Clock, Download,
   ArrowUpRight, Timer, Layers, Loader2, CheckCircle2, XCircle,
-  MessageSquare, Send, ExternalLink, RotateCcw
+  MessageSquare, Send, ExternalLink, RotateCcw,
+  Calendar, CalendarDays, TrendingUp, ShieldAlert, Boxes, MapPin
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { copyToClipboard } from '../utils/clipboard';
 import { generateSalesReceiptPDF } from '../utils/pdfGenerator';
 import { WithdrawalRequest } from '../types';
 import { SalesAnalyticsCharts } from './SalesAnalyticsCharts';
+import { MonthlyBookSalesChart, AnalyticsTimeframe } from './MonthlyBookSalesChart';
+import { SmartBookInventoryAlerts } from './SmartBookInventoryAlerts';
 
 interface AdminDashboardModalProps {
   onClose: () => void;
@@ -20,6 +23,8 @@ interface AdminDashboardModalProps {
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClose }) => {
   const { 
     books, 
+    updateBook,
+    updateBookPrice,
     customization, 
     updateCustomization, 
     paymentAccounts, 
@@ -40,15 +45,29 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     approveWithdrawal,
     rejectWithdrawal,
     resetWalletToRealProfits,
-    resetEntireSiteExceptRealProfits
+    resetEntireSiteExceptRealProfits,
+    publisherMessages,
+    publisherProfiles,
+    replyToPublisherMessage
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'stats' | 'settings' | 'payment_accounts' | 'withdrawals' | 'vouchers' | 'security' | 'sms'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'settings' | 'payment_accounts' | 'withdrawals' | 'vouchers' | 'security' | 'sms' | 'inventory_alerts' | 'publisher_messages'>('stats');
   const [copiedVoucherCode, setCopiedVoucherCode] = useState<string | null>(null);
   const [voucherMsg, setVoucherMsg] = useState<{ text: string; success: boolean } | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState<string | null>(null);
   const [adminResetMsg, setAdminResetMsg] = useState<string | null>(null);
   const [isAdminResetting, setIsAdminResetting] = useState(false);
+  const [chartTimeframe, setChartTimeframe] = useState<AnalyticsTimeframe>('monthly');
+
+  // Publisher Messages Filters & Reply State
+  const [publisherFilter, setPublisherFilter] = useState<string>('all');
+  const [publisherStatusFilter, setPublisherStatusFilter] = useState<string>('all');
+  const [adminReplyTargetId, setAdminReplyTargetId] = useState<string | null>(null);
+  const [adminReplyContent, setAdminReplyContent] = useState<string>('');
+
+  const lowStockAlertCount = books.filter(
+    (b) => (b.stockCount ?? 15) <= (b.lowStockThreshold ?? 8)
+  ).length;
 
   const handleAdminResetRealProfits = () => {
     setIsAdminResetting(true);
@@ -196,6 +215,22 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             <span>الإحصائيات والرسوم البيانية (مبيعات يومية وشهرية)</span>
           </button>
           <button
+            onClick={() => setActiveTab('inventory_alerts')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              activeTab === 'inventory_alerts'
+                ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-sm font-black'
+                : 'text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>تنبيهات المخزون والمبيعات</span>
+            {lowStockAlertCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-mono font-black animate-pulse">
+                {lowStockAlertCount}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('settings')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 ${
               activeTab === 'settings'
@@ -226,7 +261,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             }`}
           >
             <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>طلبات السحب الإنشائي ({withdrawals.filter(w => w.status === 'pending').length})</span>
+            <span>طلبات السحب ({withdrawals.filter(w => w.status === 'pending').length})</span>
           </button>
           <button
             onClick={() => setActiveTab('sms')}
@@ -238,6 +273,22 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span>رسائل بريدي موب SMS ({smsNotifications.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('publisher_messages')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              activeTab === 'publisher_messages'
+                ? 'bg-teal-700 text-white shadow-sm font-black'
+                : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5 text-amber-400" />
+            <span>فضاء وتواصل دور النشر ({publisherMessages.length})</span>
+            {publisherMessages.filter((m) => m.status === 'pending').length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-mono font-black animate-pulse">
+                {publisherMessages.filter((m) => m.status === 'pending').length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('vouchers')}
@@ -353,6 +404,100 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 </div>
               )}
 
+              {/* SMART BOOK INVENTORY & SALES ALERTS SECTION */}
+              <SmartBookInventoryAlerts
+                books={books}
+                transactions={transactions}
+                updateBook={updateBook}
+                updateBookPrice={updateBookPrice}
+                customization={customization}
+              />
+
+              {/* Chart Timeframe Selector Interface (أسبوعي، شهري، سنوي) */}
+              <div 
+                id="admin-analytics-timeframe-bar" 
+                className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-teal-50 via-stone-50 to-amber-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 border border-teal-200/70 dark:border-slate-700 shadow-sm space-y-3"
+              >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-teal-700 text-white shadow-sm flex items-center justify-center">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">
+                          تحديد الفترة الزمنية لتحليل المبيعات:
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-300/60 dark:border-teal-800">
+                          {chartTimeframe === 'weekly' && 'الفترة المعروضة: أسبوعي (آخر 7 أيام)'}
+                          {chartTimeframe === 'monthly' && 'الفترة المعروضة: شهري (الشهر الحالي)'}
+                          {chartTimeframe === 'yearly' && 'الفترة المعروضة: سنوي (عام 2026)'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                        {chartTimeframe === 'weekly' && 'تتبع دقيق لحركة مبيعات الكتب يوماً بيوم في الأسبوع الأخير لقياس التفاعل اللحظي'}
+                        {chartTimeframe === 'monthly' && 'تحليل شامل ومفصل لمسار مبيعات الكتب وحصتها السوقية على مدار أيام الشهر'}
+                        {chartTimeframe === 'yearly' && 'نظرة شمولية استراتيجية لأداء الكتب وتطور الإيرادات عبر كافة أشهر عام 2026'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Period Switcher Segmented Control */}
+                  <div className="inline-flex rounded-xl bg-white dark:bg-slate-900 p-1 border border-stone-200 dark:border-slate-700 shadow-sm w-full sm:w-auto justify-center">
+                    <button
+                      type="button"
+                      id="btn-timeframe-weekly"
+                      onClick={() => setChartTimeframe('weekly')}
+                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        chartTimeframe === 'weekly'
+                          ? 'bg-gradient-to-r from-teal-700 to-teal-800 text-white shadow-sm'
+                          : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>أسبوعي</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="btn-timeframe-monthly"
+                      onClick={() => setChartTimeframe('monthly')}
+                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        chartTimeframe === 'monthly'
+                          ? 'bg-gradient-to-r from-teal-700 to-teal-800 text-white shadow-sm'
+                          : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      <span>شهري</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="btn-timeframe-yearly"
+                      onClick={() => setChartTimeframe('yearly')}
+                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        chartTimeframe === 'yearly'
+                          ? 'bg-gradient-to-r from-teal-700 to-teal-800 text-white shadow-sm'
+                          : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span>سنوي</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recharts Monthly Book Sales Chart with timeframe support */}
+              <MonthlyBookSalesChart
+                books={books}
+                transactions={transactions}
+                customization={customization}
+                timeframe={chartTimeframe}
+                onTimeframeChange={setChartTimeframe}
+              />
+
               {/* Recharts Sales Analytics: Daily, Monthly, and Payment Distribution */}
               <SalesAnalyticsCharts 
                 transactions={transactions} 
@@ -376,6 +521,19 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: SMART BOOK INVENTORY & SALES ALERTS (DEDICATED FULL VIEW) */}
+          {activeTab === 'inventory_alerts' && (
+            <div className="space-y-6">
+              <SmartBookInventoryAlerts
+                books={books}
+                transactions={transactions}
+                updateBook={updateBook}
+                updateBookPrice={updateBookPrice}
+                customization={customization}
+              />
             </div>
           )}
 
@@ -651,7 +809,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     <div className="flex items-center gap-2 mb-1">
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-stone-950 flex items-center gap-1">
                         <Zap className="w-3 h-3 fill-current" />
-                        <span>نظام السحب الإنشائي المباشر</span>
+                        <span>نظام سحب الأرباح المباشر</span>
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
@@ -693,7 +851,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 <div className="flex items-center justify-between">
                   <h5 className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-amber-500" />
-                    <span>قائمة طلبات السحب الإنشائي:</span>
+                    <span>قائمة طلبات السحب:</span>
                   </h5>
                 </div>
 
@@ -727,11 +885,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                                 <span className="font-mono font-bold text-xs text-stone-900 dark:text-white">
                                   {w.referenceCode}
                                 </span>
-                                {w.isStructured && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                    ⚡ سحب إنشائي
-                                  </span>
-                                )}
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
                                   {w.method === 'baridimob' ? 'بريدي موب (BaridiMob RIP)' : w.method === 'binance' ? `بينانس (${w.cryptoNetwork || 'USDT'})` : 'حساب بريدي CCP'}
                                 </span>
@@ -830,11 +983,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                                       paymentMethod: w.method,
                                       paymentMethodLabel: w.method === 'baridimob' ? 'بريدي موب (BaridiMob RIP)' : w.method === 'binance' ? `بينانس (${w.cryptoNetwork || 'USDT'})` : 'حساب CCP',
                                       transactionRef: w.referenceCode,
-                                      badgeTitle: w.isStructured ? 'سند صرف وسحب مالي إنشائي معتمد' : 'إيصال سحب مالي معتمد',
+                                      badgeTitle: 'إيصال سحب مالي معتمد',
                                       ripNumber: w.method === 'baridimob' ? w.accountDetails : undefined,
                                       beneficiaryName: w.beneficiaryName || w.authorName,
                                       items: [{
-                                        title: `سند سحب إنشائي فوري معتمد (مدة التنفيذ: ساعتان ⏱️) • تحويل ${w.method === 'baridimob' ? 'بريدي موب' : w.method === 'binance' ? 'بينانس' : 'CCP'}`,
+                                        title: `سند سحب مالي معتمد (مدة التنفيذ: ساعتان ⏱️) • تحويل ${w.method === 'baridimob' ? 'بريدي موب' : w.method === 'binance' ? 'بينانس' : 'CCP'}`,
                                         author: customization.presidentName || 'لقمان ياسين أبختي',
                                         priceDzd: w.amountDzd,
                                         priceUsdt: safeUsdt,
@@ -911,7 +1064,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                       </span>
                     </div>
                     <p className="text-xs text-stone-300 mt-1">
-                      ربط وتأكيد عمليات السحب الإنشائي والتحويلات مع مهلة التنفيذ ساعتان (2 Hours) وإشعار المستفيد فورياً
+                      ربط وتأكيد عمليات السحب والتحويلات مع مهلة التنفيذ ساعتان (2 Hours) وإشعار المستفيد فورياً
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 text-[10px] font-bold border border-sky-400/40 flex items-center gap-1">
@@ -1262,6 +1415,269 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 6: PUBLISHER MESSAGES & COMMUNICATION HUB */}
+          {activeTab === 'publisher_messages' && (
+            <div className="space-y-6">
+              
+              {/* Hub Header & Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-4 rounded-2xl bg-teal-50/60 dark:bg-slate-800 border border-teal-200/60 dark:border-slate-700">
+                  <span className="text-xs text-stone-500 dark:text-stone-400 block font-medium">إجمالي الاستفسارات</span>
+                  <div className="text-xl font-black text-teal-900 dark:text-teal-200 mt-1">
+                    {publisherMessages.length} رسالة
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-slate-800 border border-amber-200/60 dark:border-slate-700">
+                  <span className="text-xs text-stone-500 dark:text-stone-400 block font-medium">بانتظار الرد الرسمي</span>
+                  <div className="text-xl font-black text-amber-700 dark:text-amber-300 mt-1 flex items-center gap-1.5">
+                    <span>{publisherMessages.filter((m) => m.status === 'pending').length}</span>
+                    {publisherMessages.filter((m) => m.status === 'pending').length > 0 && (
+                      <span className="text-[10px] bg-amber-200 dark:bg-amber-900/60 px-2 py-0.5 rounded-full">جديد</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-slate-800 border border-emerald-200/60 dark:border-slate-700">
+                  <span className="text-xs text-stone-500 dark:text-stone-400 block font-medium">تمت الإجابة والرد</span>
+                  <div className="text-xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
+                    {publisherMessages.filter((m) => m.status === 'replied').length} رد رسمي
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-stone-100/80 dark:bg-slate-800 border border-stone-200 dark:border-slate-700">
+                  <span className="text-xs text-stone-500 dark:text-stone-400 block font-medium">دور النشر الشريكة</span>
+                  <div className="text-xl font-black text-stone-800 dark:text-white mt-1">
+                    {Object.keys(publisherProfiles).length} دور نشر
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters Bar */}
+              <div className="p-4 rounded-2xl bg-stone-50 dark:bg-slate-800/80 border border-stone-200 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    تصفية دار النشر:
+                  </span>
+                  <select
+                    value={publisherFilter}
+                    onChange={(e) => setPublisherFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl text-xs border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-900 dark:text-white font-medium"
+                  >
+                    <option value="all">جميع دور النشر</option>
+                    {Object.keys(publisherProfiles).map((pName) => (
+                      <option key={pName} value={pName}>{pName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    الحالة:
+                  </span>
+                  <div className="flex bg-stone-200/70 dark:bg-slate-900 p-0.5 rounded-xl text-xs">
+                    <button
+                      onClick={() => setPublisherStatusFilter('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        publisherStatusFilter === 'all' ? 'bg-white dark:bg-slate-800 text-teal-800 dark:text-teal-300 shadow-xs' : 'text-stone-600 dark:text-stone-400'
+                      }`}
+                    >
+                      الكل ({publisherMessages.length})
+                    </button>
+                    <button
+                      onClick={() => setPublisherStatusFilter('pending')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        publisherStatusFilter === 'pending' ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 shadow-xs' : 'text-stone-600 dark:text-stone-400'
+                      }`}
+                    >
+                      قيد المراجعة ({publisherMessages.filter(m => m.status === 'pending').length})
+                    </button>
+                    <button
+                      onClick={() => setPublisherStatusFilter('replied')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        publisherStatusFilter === 'replied' ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 shadow-xs' : 'text-stone-600 dark:text-stone-400'
+                      }`}
+                    >
+                      تم الرد ({publisherMessages.filter(m => m.status === 'replied').length})
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages Inquiries List */}
+              <div className="space-y-4">
+                {publisherMessages
+                  .filter((m) => publisherFilter === 'all' || m.publisherName === publisherFilter)
+                  .filter((m) => publisherStatusFilter === 'all' || m.status === publisherStatusFilter)
+                  .map((msg) => {
+                    const isReplying = adminReplyTargetId === msg.id;
+
+                    return (
+                      <div
+                        key={msg.id}
+                        className="p-5 rounded-2xl bg-stone-50/70 dark:bg-slate-800/60 border border-stone-200 dark:border-slate-700 space-y-3"
+                      >
+                        {/* Top Info */}
+                        <div className="flex items-start justify-between flex-wrap gap-2">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/50">
+                                🏛️ دار النشر: {msg.publisherName}
+                              </span>
+                              <span className="text-xs text-stone-500 dark:text-stone-400">
+                                كتاب: <strong className="text-stone-900 dark:text-white">{msg.bookTitle}</strong>
+                              </span>
+                              <span className="text-[11px] text-stone-400 font-mono">
+                                {new Date(msg.createdAt).toLocaleString('ar-DZ')}
+                              </span>
+                            </div>
+
+                            <h4 className="text-sm font-black text-stone-900 dark:text-white mt-1.5">
+                              {msg.subject}
+                            </h4>
+                          </div>
+
+                          <div>
+                            {msg.status === 'replied' ? (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>تم الرد</span>
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>بانتظار الرد</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Sender inquiry */}
+                        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700/80 space-y-1 text-xs">
+                          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
+                            <span>المرسل: <strong className="text-stone-900 dark:text-white">{msg.senderName}</strong> ({msg.senderEmail})</span>
+                            {msg.senderPhone && <span dir="ltr" className="font-mono">{msg.senderPhone}</span>}
+                          </div>
+                          <p className="text-stone-700 dark:text-stone-300 pt-1 leading-relaxed whitespace-pre-line">
+                            {msg.message}
+                          </p>
+                        </div>
+
+                        {/* Official Publisher Reply (if exists) */}
+                        {msg.publisherReply && (
+                          <div className="p-3.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 space-y-1 text-xs mr-3">
+                            <div className="flex items-center justify-between font-bold text-teal-900 dark:text-teal-200">
+                              <span>الرد الرسمي الصادر ({msg.publisherReply.responderName} - {msg.publisherReply.responderRole}):</span>
+                              <span className="text-[10px] font-mono text-stone-400">{new Date(msg.publisherReply.repliedAt).toLocaleString('ar-DZ')}</span>
+                            </div>
+                            <p className="text-stone-800 dark:text-stone-200 pt-1 leading-relaxed whitespace-pre-line">
+                              {msg.publisherReply.text}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Action Bar */}
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[11px] text-stone-400 font-mono">
+                            ID: {msg.id}
+                          </span>
+
+                          <button
+                            onClick={() => {
+                              setAdminReplyTargetId(isReplying ? null : msg.id);
+                              setAdminReplyContent('');
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>{msg.status === 'replied' ? 'تعديل أو إرسال رد إضافي' : 'كتابة رد رسمي فوري'}</span>
+                          </button>
+                        </div>
+
+                        {/* Reply Form */}
+                        {isReplying && (
+                          <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-teal-600/50 space-y-2 mt-2">
+                            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+                              صياغة الرد الرسمي المعتمد باسم دار النشر ({msg.publisherName}):
+                            </label>
+                            <textarea
+                              value={adminReplyContent}
+                              onChange={(e) => setAdminReplyContent(e.target.value)}
+                              rows={3}
+                              placeholder="اكتب الرد الرسمي الموجه للقارئ/المؤسسة..."
+                              className="w-full p-2.5 rounded-xl text-xs border border-stone-200 dark:border-slate-700 bg-stone-50 dark:bg-slate-800 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-600"
+                            />
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setAdminReplyTargetId(null)}
+                                className="px-3 py-1.5 rounded-lg text-xs text-stone-500 hover:bg-stone-100 dark:hover:bg-slate-800"
+                              >
+                                إلغاء
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (!adminReplyContent.trim()) return;
+                                  const res = replyToPublisherMessage(msg.id, adminReplyContent.trim());
+                                  if (res.success) {
+                                    setAdminReplyTargetId(null);
+                                    setAdminReplyContent('');
+                                  } else {
+                                    alert(res.error || 'فشل إرسال الرد');
+                                  }
+                                }}
+                                className="px-4 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold shadow-xs"
+                              >
+                                اعتماد وإرسال الرد الرسمي ✉️
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Registered Publishers Directory Cards */}
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black text-stone-900 dark:text-white flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-teal-600" />
+                    <span>دليل دور النشر الجزائرية المعتمدة في المنصة</span>
+                  </h4>
+                  <span className="text-xs text-stone-500 dark:text-stone-400">
+                    {Object.keys(publisherProfiles).length} دور نشر مسجلة
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Object.values(publisherProfiles).map((pub) => (
+                    <div
+                      key={pub.name}
+                      className="p-3.5 rounded-xl bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 space-y-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <strong className="text-stone-900 dark:text-white font-bold">{pub.name}</strong>
+                        <span className="text-[10px] text-teal-700 dark:text-teal-300 font-mono bg-teal-100 dark:bg-teal-950 px-2 py-0.5 rounded">
+                          {pub.licenseNumber}
+                        </span>
+                      </div>
+                      <div className="text-stone-600 dark:text-stone-400 text-[11px] flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-teal-600 shrink-0" />
+                        <span>{pub.city}، {pub.country} — {pub.address}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-200/60 dark:border-slate-700">
+                        <span>المسؤول: {pub.contactPerson}</span>
+                        <span dir="ltr" className="font-mono">{pub.officialPhone}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
           )}
 
