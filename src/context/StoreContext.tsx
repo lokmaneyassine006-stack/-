@@ -3,13 +3,12 @@ import {
   Book, User, Review, CartItem, ForumTopic, ForumReply, ForumPost, SaleTransaction, 
   WithdrawalRequest, VirtualCardData, VirtualCardConfig, TeamMember, TeamChangeRequest, 
   MeetingSchedule, JobApplication, StoreCustomization, SocialLinks, SavedPaymentAccounts, 
-  GiftCardVoucher, SecurityState, BookTranslation, PromotionBroadcast, BaridimobSmsNotification,
-  PublisherMessage, PublisherProfile
+  GiftCardVoucher, SecurityState, BookTranslation, PromotionBroadcast, BaridimobSmsNotification
 } from '../types';
 import { 
   OWNER_USER, SAAD_BOUACHA_USER, DEMO_USERS, INITIAL_BOOKS, INITIAL_REVIEWS, 
   INITIAL_FORUM_TOPICS, INITIAL_TEAM_MEMBERS, INITIAL_VIRTUAL_CARDS, 
-  INITIAL_GIFT_CARDS, DEFAULT_PUBLISHER_PROFILES, INITIAL_PUBLISHER_MESSAGES 
+  INITIAL_GIFT_CARDS 
 } from '../data/seedData';
 import { checkProfanity, generateReferenceCode, calculateIntegrityChecksum } from '../utils/security';
 import { SpeechEngine } from '../utils/audioTTS';
@@ -223,27 +222,6 @@ interface StoreContextType {
   addLivePromotion: (promo: PromotionBroadcast) => void;
   lastPurchasedPromotion: { books: Book[]; txRef: string } | null;
   setLastPurchasedPromotion: (data: { books: Book[]; txRef: string } | null) => void;
-
-  // Publisher Communication Hub (فضاء التواصل مع ناشر الكتاب)
-  publisherMessages: PublisherMessage[];
-  publisherProfiles: Record<string, PublisherProfile>;
-  sendPublisherMessage: (data: {
-    bookId: string;
-    bookTitle: string;
-    publisherName: string;
-    senderName: string;
-    senderEmail: string;
-    senderPhone?: string;
-    category: PublisherMessage['category'];
-    subject: string;
-    message: string;
-  }) => { success: boolean; messageId?: string; error?: string };
-  replyToPublisherMessage: (messageId: string, replyText: string) => { success: boolean; error?: string };
-  getPublisherProfile: (publisherName: string) => PublisherProfile;
-  activePublisherBook: Book | null;
-  setActivePublisherBook: (book: Book | null) => void;
-  recentlyViewed: Book[];
-  recordBookView: (book: Book) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -294,6 +272,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
       buyerId: 'user-2',
       buyerName: 'أمين بلمختار',
+      buyerEmail: 'amine.ben@change.dz',
       sellerId: 'user-lokmane-owner',
       sellerName: 'لقمان ياسين أبختي',
       description: 'شراء كتاب عبر تطبيق بريدي موب والدفع المباشر بالـ RIP',
@@ -317,6 +296,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
       buyerId: 'user-4',
       buyerName: 'كريم الجزائري',
+      buyerEmail: 'karim.reader@gmail.com',
       sellerId: 'user-lokmane-owner',
       sellerName: 'لقمان ياسين أبختي',
       description: 'شراء كتاب بالعملة الرقمية Binance Pay USDT',
@@ -329,8 +309,80 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       status: 'completed',
       timestamp: '2026-09-10 11:20',
       date: '2026-09-10',
+      phoneNumber: '0550112233',
       cryptoNetwork: 'Binance Pay',
       txHash: '0x8f72a6b4c919d380e611894b98c55490a071'
+    },
+    {
+      id: 'tx-cib-purchase-1',
+      txRef: 'TX-CIB-2026-4421',
+      bookId: 'book-owner-1',
+      bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+      buyerId: 'user-sarah-3',
+      buyerName: 'د. سارة القاسمي',
+      buyerEmail: 'sarah.k@change.dz',
+      sellerId: 'user-lokmane-owner',
+      sellerName: 'لقمان ياسين أبختي',
+      description: 'شراء النسخة الرقمية عبر البطاقة البنكية الذهبية / CIB',
+      type: 'book_purchase',
+      amountDzd: 1800,
+      amountUsdt: 7.5,
+      platformFeeDzd: 0,
+      authorNetDzd: 1800,
+      method: 'cib_ccp',
+      status: 'completed',
+      timestamp: '2026-09-12 14:15',
+      date: '2026-09-12',
+      phoneNumber: '0770998877',
+      txHash: '0x9918237bba8912efc4510928a3810291'
+    },
+    {
+      id: 'tx-bm-purchase-2',
+      txRef: 'TX-BM-2026-7109',
+      bookId: 'book-owner-1',
+      bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+      buyerId: 'user-soufiane-5',
+      buyerName: 'سفيان بن عيسى',
+      buyerEmail: 'soufiane.benaissa@gmail.com',
+      sellerId: 'user-lokmane-owner',
+      sellerName: 'لقمان ياسين أبختي',
+      description: 'شراء كتاب عبر تطبيق بريدي موب والدفع المباشر بالـ RIP',
+      type: 'book_purchase',
+      amountDzd: 1800,
+      amountUsdt: 7.5,
+      platformFeeDzd: 0,
+      authorNetDzd: 1800,
+      method: 'baridimob',
+      status: 'completed',
+      timestamp: '2026-09-14 09:30',
+      date: '2026-09-14',
+      accountDetails: '00799999002847192033',
+      phoneNumber: '0699445566',
+      txHash: '0x12bb9930f781ea38992019ab38472918'
+    },
+    {
+      id: 'tx-bn-purchase-2',
+      txRef: 'TX-BN-2026-3C89A',
+      bookId: 'book-owner-1',
+      bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+      buyerId: 'user-nadia-6',
+      buyerName: 'نادية عماري',
+      buyerEmail: 'nadia.ammari@outlook.com',
+      sellerId: 'user-lokmane-owner',
+      sellerName: 'لقمان ياسين أبختي',
+      description: 'شراء كتاب بالعملة الرقمية Binance Pay USDT (TRC20)',
+      type: 'book_purchase',
+      amountDzd: 1800,
+      amountUsdt: 7.5,
+      platformFeeDzd: 0,
+      authorNetDzd: 1800,
+      method: 'binance',
+      status: 'completed',
+      timestamp: '2026-09-15 18:45',
+      date: '2026-09-15',
+      phoneNumber: '0541239874',
+      cryptoNetwork: 'Binance Pay / TRC20',
+      txHash: '0x55aa3389bc7712df8829103984572910'
     }
   ]));
   
@@ -478,180 +530,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Localization & Currency
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>(LANGUAGES[0]);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('DZD');
-  const [themeMode, setThemeModeState] = useState<'light' | 'dark' | 'sepia' | 'auto'>(() => {
-    try {
-      const stored = localStorage.getItem('together_change_theme') || 
-                     localStorage.getItem(LOCAL_STORAGE_PREFIX + 'themeMode') || 
-                     localStorage.getItem('themeMode') || 
-                     localStorage.getItem('theme');
-      if (stored) {
-        const clean = stored.replace(/"/g, '').trim();
-        if (['light', 'dark', 'sepia', 'auto'].includes(clean)) {
-          return clean as 'light' | 'dark' | 'sepia' | 'auto';
-        }
-      }
-    } catch (e) {
-      console.warn('Could not load theme from localStorage:', e);
-    }
-    return 'light';
-  });
+  const [themeMode, setThemeModeState] = useState<'light' | 'dark' | 'sepia' | 'auto'>('light');
 
   // Modals state
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [activeBookForModal, setActiveBookForModal] = useState<Book | null>(null);
   const [quickBinanceBook, setQuickBinanceBook] = useState<Book | null>(null);
-  const [activePublisherBook, setActivePublisherBook] = useState<Book | null>(null);
-
-  // Recently browsed books for Gemini AI personalized recommendations
-  const [recentlyViewed, setRecentlyViewed] = useState<Book[]>(() => {
-    const saved = loadStorage<Book[]>('recentlyViewedBooks', []);
-    if (saved && saved.length > 0) {
-      return saved;
-    }
-    // Initial seed so Gemini recommendations have rich context from first visit
-    return INITIAL_BOOKS.slice(0, 2);
-  });
-
-  const recordBookView = useCallback((book: Book) => {
-    setRecentlyViewed((prev) => {
-      const filtered = prev.filter((b) => b.id !== book.id);
-      const updated = [book, ...filtered].slice(0, 10);
-      saveStorage('recentlyViewedBooks', updated);
-      return updated;
-    });
-  }, []);
-
-  // Publisher Messages and Communication Hub
-  const [publisherMessages, setPublisherMessages] = useState<PublisherMessage[]>(() => loadStorage('publisherMessages', INITIAL_PUBLISHER_MESSAGES));
-  const [publisherProfiles] = useState<Record<string, PublisherProfile>>(() => loadStorage('publisherProfiles', DEFAULT_PUBLISHER_PROFILES));
-
-  const getPublisherProfile = useCallback((publisherName: string): PublisherProfile => {
-    if (publisherProfiles[publisherName]) {
-      return publisherProfiles[publisherName];
-    }
-    return {
-      name: publisherName,
-      licenseNumber: 'DZ-PUB-VERIFIED-2026',
-      country: 'الجزائر',
-      city: 'الجزائر العاصمة',
-      address: 'شارع ديدوش مراد / شارع العربي بن مهيدي، الجزائر العاصمة',
-      officialEmail: `contact@${publisherName.replace(/\s+/g, '-').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'publisher'}.dz`,
-      officialPhone: '+213 652 20 69 47',
-      whatsappNumber: '+213 652 20 69 47',
-      contactPerson: 'إدارة النشر والتوزيع',
-      contactPersonRole: 'مسؤول العلاقات العامة وتنسيق النشر',
-      avgResponseHours: 4,
-      publishingGenres: ['العلوم والفكر', 'التنمية وبناء الإنسان'],
-      submissionOpen: true,
-      aboutPublisher: `دار نشر معتمدة شريكة في منصة "معا نحو التغيير" لنشر وتوزيع الكتب المتميزة وحماية حقوق المؤلفين.`
-    };
-  }, [publisherProfiles]);
-
-  const sendPublisherMessage = useCallback((data: {
-    bookId: string;
-    bookTitle: string;
-    publisherName: string;
-    senderName: string;
-    senderEmail: string;
-    senderPhone?: string;
-    category: PublisherMessage['category'];
-    subject: string;
-    message: string;
-  }) => {
-    if (!data.message.trim() || !data.subject.trim() || !data.senderEmail.trim()) {
-      return { success: false, error: 'يرجى ملء جميع الحقول المطلوبة (الاسم، البريد، الموضوع، ونص الرسالة)' };
-    }
-
-    const newMsg: PublisherMessage = {
-      id: `pub-msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      bookId: data.bookId,
-      bookTitle: data.bookTitle,
-      publisherName: data.publisherName,
-      senderId: currentUser.id,
-      senderName: data.senderName || `${currentUser.firstName} ${currentUser.lastName}`.trim() || 'قارئ معتمد',
-      senderEmail: data.senderEmail || currentUser.email,
-      senderPhone: data.senderPhone || '',
-      category: data.category,
-      subject: data.subject.trim(),
-      message: data.message.trim(),
-      createdAt: new Date().toISOString(),
-      status: 'pending'
-    };
-
-    setPublisherMessages((prev) => {
-      const next = [newMsg, ...prev];
-      saveStorage('publisherMessages', next);
-      return next;
-    });
-
-    // Generate smart courteous response from publisher representative after a brief moment
-    setTimeout(() => {
-      setPublisherMessages((current) => {
-        const target = current.find((m) => m.id === newMsg.id);
-        if (!target) return current;
-
-        let autoReplyText = '';
-        if (data.category === 'bulk_order') {
-          autoReplyText = `مرحباً ${data.senderName}، تم استلام طلبكم لاقتناء كمية من كتاب "${data.bookTitle}". يقوم قسم المبيعات والتوزيع بمراجعة الطلب وسيتم إرسال عرض الأسعار وجدول التوصيل المعتمد خلال ساعات عمل اليوم.`;
-        } else if (data.category === 'rights_inquiry') {
-          autoReplyText = `تحية طيبة، نشكر اهتمامكم بحقوق وتراخيص كتاب "${data.bookTitle}". تم توجيه استفساركم لمكتب الملكية الفكرية والترجمة، وسيتواصل معكم مسؤول الحقوق الثقافية رسمياً.`;
-        } else if (data.category === 'manuscript_submission') {
-          autoReplyText = `مرحباً بكم، تسعد دار النشر باستقبال مقترحات المؤلفين. تم تحويل ملخص العمل إلى لجنة القراءة والتقييم الأدبي، وسنوافيكم بالرد المبدئي عبر بريدكم الإلكتروني.`;
-        } else if (data.category === 'press_interview') {
-          autoReplyText = `السلام عليكم ورحمة الله، نشكر اهتمامكم الإعلامي بالكاتب والناشر. تم تمرير طلب المقابلة للمكتب الإعلامي لترتيب الموعد والتفاصيل.`;
-        } else {
-          autoReplyText = `أهلاً بك ${data.senderName}، نشكر تواصلك مع دار النشر بخصوص "${data.bookTitle}". رسالتكم محل عناية واهتمام وسيقوم ممثل الدار بالرد عليكم في أقرب وقت.`;
-        }
-
-        const updated = current.map((m) => 
-          m.id === newMsg.id ? {
-            ...m,
-            status: 'replied' as const,
-            publisherReply: {
-              text: autoReplyText,
-              repliedAt: new Date().toISOString(),
-              responderName: 'أمين بلمختار',
-              responderRole: 'مدير النشر والعلاقات الثقافية'
-            }
-          } : m
-        );
-        saveStorage('publisherMessages', updated);
-        return updated;
-      });
-    }, 1800);
-
-    return { success: true, messageId: newMsg.id };
-  }, [currentUser]);
-
-  const replyToPublisherMessage = useCallback((messageId: string, replyText: string) => {
-    if (!replyText.trim()) return { success: false, error: 'نص الرد فارغ' };
-
-    let found = false;
-    setPublisherMessages((prev) => {
-      const next = prev.map((m) => {
-        if (m.id === messageId) {
-          found = true;
-          return {
-            ...m,
-            status: 'replied' as const,
-            publisherReply: {
-              text: replyText.trim(),
-              repliedAt: new Date().toISOString(),
-              responderName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || 'ممثل دار النشر',
-              responderRole: currentUser.role === 'owner' ? 'رئيس مجلس الإدارة وإدارة النشر' : 'مسؤول العلاقات والتوزيع'
-            }
-          };
-        }
-        return m;
-      });
-      if (found) {
-        saveStorage('publisherMessages', next);
-      }
-      return next;
-    });
-
-    return found ? { success: true } : { success: false, error: 'الرسالة غير موجودة' };
-  }, [currentUser]);
 
   // Live Auto-Promotion Broadcasts
   const [livePromotions, setLivePromotions] = useState<PromotionBroadcast[]>(() => loadStorage('livePromotions', [
@@ -927,8 +811,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-    root.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'dark');
-    body.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'dark');
+    root.classList.remove('theme-light', 'theme-dark', 'theme-sepia');
+    body.classList.remove('theme-light', 'theme-dark', 'theme-sepia');
 
     let effectiveTheme = themeMode;
     if (themeMode === 'auto') {
@@ -936,19 +820,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       effectiveTheme = prefersDark ? 'dark' : 'light';
     }
 
-    if (effectiveTheme === 'dark') {
-      root.classList.add('dark', 'theme-dark');
-      body.classList.add('dark', 'theme-dark');
-      root.style.colorScheme = 'dark';
-    } else if (effectiveTheme === 'sepia') {
-      root.classList.add('theme-sepia');
-      body.classList.add('theme-sepia');
-      root.style.colorScheme = 'light';
-    } else {
-      root.classList.add('theme-light');
-      body.classList.add('theme-light');
-      root.style.colorScheme = 'light';
-    }
+    const themeClass = `theme-${effectiveTheme}`;
+    root.classList.add(themeClass);
+    body.classList.add(themeClass);
   }, [themeMode]);
 
   // Handle language and RTL direction
@@ -961,14 +835,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setThemeMode = useCallback((mode: 'light' | 'dark' | 'sepia' | 'auto') => {
     setThemeModeState(mode);
-    try {
-      localStorage.setItem('together_change_theme', mode);
-      localStorage.setItem('theme', mode);
-      localStorage.setItem('themeMode', mode);
-      localStorage.setItem(LOCAL_STORAGE_PREFIX + 'themeMode', JSON.stringify(mode));
-    } catch (e) {
-      console.warn('Failed to save theme to localStorage:', e);
-    }
     setCustomization((prev) => ({ ...prev, themeMode: mode }));
   }, []);
 
@@ -2502,7 +2368,7 @@ ${balanceText}${truecallerSeal}
   }, [transactions, withdrawals, smsNotifications, currentUser, customization]);
 
   const resetEntireSiteExceptRealProfits = useCallback(() => {
-    const REAL_WALLET_DZD = 3600;
+    const REAL_WALLET_DZD = 9000;
 
     const REAL_TRANSACTIONS: SaleTransaction[] = [
       {
@@ -2512,6 +2378,7 @@ ${balanceText}${truecallerSeal}
         bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
         buyerId: 'user-2',
         buyerName: 'أمين بلمختار',
+        buyerEmail: 'amine.ben@change.dz',
         sellerId: 'user-lokmane-owner',
         sellerName: 'لقمان ياسين أبختي',
         description: 'شراء كتاب عبر تطبيق بريدي موب والدفع المباشر بالـ RIP',
@@ -2535,6 +2402,7 @@ ${balanceText}${truecallerSeal}
         bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
         buyerId: 'user-4',
         buyerName: 'كريم الجزائري',
+        buyerEmail: 'karim.reader@gmail.com',
         sellerId: 'user-lokmane-owner',
         sellerName: 'لقمان ياسين أبختي',
         description: 'شراء كتاب بالعملة الرقمية Binance Pay USDT',
@@ -2547,8 +2415,80 @@ ${balanceText}${truecallerSeal}
         status: 'completed',
         timestamp: '2026-09-10 11:20',
         date: '2026-09-10',
+        phoneNumber: '0550112233',
         cryptoNetwork: 'Binance Pay',
         txHash: '0x8f72a6b4c919d380e611894b98c55490a071'
+      },
+      {
+        id: 'tx-cib-purchase-1',
+        txRef: 'TX-CIB-2026-4421',
+        bookId: 'book-owner-1',
+        bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+        buyerId: 'user-sarah-3',
+        buyerName: 'د. سارة القاسمي',
+        buyerEmail: 'sarah.k@change.dz',
+        sellerId: 'user-lokmane-owner',
+        sellerName: 'لقمان ياسين أبختي',
+        description: 'شراء النسخة الرقمية عبر البطاقة البنكية الذهبية / CIB',
+        type: 'book_purchase',
+        amountDzd: 1800,
+        amountUsdt: 7.5,
+        platformFeeDzd: 0,
+        authorNetDzd: 1800,
+        method: 'cib_ccp',
+        status: 'completed',
+        timestamp: '2026-09-12 14:15',
+        date: '2026-09-12',
+        phoneNumber: '0770998877',
+        txHash: '0x9918237bba8912efc4510928a3810291'
+      },
+      {
+        id: 'tx-bm-purchase-2',
+        txRef: 'TX-BM-2026-7109',
+        bookId: 'book-owner-1',
+        bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+        buyerId: 'user-soufiane-5',
+        buyerName: 'سفيان بن عيسى',
+        buyerEmail: 'soufiane.benaissa@gmail.com',
+        sellerId: 'user-lokmane-owner',
+        sellerName: 'لقمان ياسين أبختي',
+        description: 'شراء كتاب عبر تطبيق بريدي موب والدفع المباشر بالـ RIP',
+        type: 'book_purchase',
+        amountDzd: 1800,
+        amountUsdt: 7.5,
+        platformFeeDzd: 0,
+        authorNetDzd: 1800,
+        method: 'baridimob',
+        status: 'completed',
+        timestamp: '2026-09-14 09:30',
+        date: '2026-09-14',
+        accountDetails: '00799999002847192033',
+        phoneNumber: '0699445566',
+        txHash: '0x12bb9930f781ea38992019ab38472918'
+      },
+      {
+        id: 'tx-bn-purchase-2',
+        txRef: 'TX-BN-2026-3C89A',
+        bookId: 'book-owner-1',
+        bookTitle: 'معا نحو التغيير: فلسفة النهضة وبناء الإنسان المعاصر',
+        buyerId: 'user-nadia-6',
+        buyerName: 'نادية عماري',
+        buyerEmail: 'nadia.ammari@outlook.com',
+        sellerId: 'user-lokmane-owner',
+        sellerName: 'لقمان ياسين أبختي',
+        description: 'شراء كتاب بالعملة الرقمية Binance Pay USDT (TRC20)',
+        type: 'book_purchase',
+        amountDzd: 1800,
+        amountUsdt: 7.5,
+        platformFeeDzd: 0,
+        authorNetDzd: 1800,
+        method: 'binance',
+        status: 'completed',
+        timestamp: '2026-09-15 18:45',
+        date: '2026-09-15',
+        phoneNumber: '0541239874',
+        cryptoNetwork: 'Binance Pay / TRC20',
+        txHash: '0x55aa3389bc7712df8829103984572910'
       }
     ];
 
@@ -2943,16 +2883,7 @@ ${balanceText}${truecallerSeal}
         livePromotions,
         addLivePromotion,
         lastPurchasedPromotion,
-        setLastPurchasedPromotion,
-        publisherMessages,
-        publisherProfiles,
-        sendPublisherMessage,
-        replyToPublisherMessage,
-        getPublisherProfile,
-        activePublisherBook,
-        setActivePublisherBook,
-        recentlyViewed,
-        recordBookView
+        setLastPurchasedPromotion
       }}
     >
       {children}

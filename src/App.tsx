@@ -18,8 +18,6 @@ import { PurchasePromotionTool } from './components/PurchasePromotionTool';
 import { LivePromotionBroadcast } from './components/LivePromotionBroadcast';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { BaridimobSmsModal } from './components/BaridimobSmsModal';
-import { PublisherContactModal } from './components/PublisherContactModal';
-import { RecommendedBooksSection } from './components/RecommendedBooksSection';
 import { Footer } from './components/Footer';
 import { Book } from './types';
 import { BookOpen, Sparkles, FilterX } from 'lucide-react';
@@ -31,11 +29,7 @@ const MainStoreContent: React.FC = () => {
     setActiveModal, 
     isCartOpen, 
     setIsCartOpen,
-    currentUser,
-    activePublisherBook,
-    setActivePublisherBook,
-    activeBookForModal,
-    recordBookView
+    currentUser
   } = useStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,11 +95,6 @@ const MainStoreContent: React.FC = () => {
 
   const handleOpenQuickBaridiMob = (book: Book) => {
     setSelectedBookForBaridiMob(book);
-  };
-
-  const handleOpenDetails = (book: Book) => {
-    recordBookView(book);
-    setSelectedBookForDetails(book);
   };
 
   const handleCartBinanceCheckout = () => {
@@ -202,7 +191,7 @@ const MainStoreContent: React.FC = () => {
               <BookCard
                 key={book.id}
                 book={book}
-                onOpenDetails={handleOpenDetails}
+                onOpenDetails={(b) => setSelectedBookForDetails(b)}
                 onQuickBinance={handleOpenQuickBinance}
                 onQuickBaridiMob={handleOpenQuickBaridiMob}
               />
@@ -211,13 +200,6 @@ const MainStoreContent: React.FC = () => {
         )}
 
       </main>
-
-      {/* Gemini AI Recommended Books Section (At bottom of home page) */}
-      <RecommendedBooksSection
-        onOpenDetails={handleOpenDetails}
-        onQuickBinance={handleOpenQuickBinance}
-        onQuickBaridiMob={handleOpenQuickBaridiMob}
-      />
 
       {/* Footer */}
       <Footer />
@@ -278,9 +260,18 @@ const MainStoreContent: React.FC = () => {
         <WalletModal onClose={() => setActiveModal(null)} />
       )}
 
-      {/* 8. Owner Admin Dashboard / President Office Modal */}
-      {(activeModal === 'admin' || activeModal === 'admin_dashboard' || activeModal === 'president_office') && (
-        <AdminDashboardModal onClose={() => setActiveModal(null)} />
+      {/* 8. Owner Admin Dashboard / President Office / Buyers Registry Modal */}
+      {(activeModal === 'admin' || activeModal === 'admin_dashboard' || activeModal === 'president_office' || activeModal === 'buyers_list' || activeModal === 'buyers') && (
+        <AdminDashboardModal 
+          onClose={() => setActiveModal(null)} 
+          initialTab={
+            (activeModal === 'buyers_list' || activeModal === 'buyers') 
+              ? 'buyers' 
+              : activeModal === 'president_office' 
+              ? 'settings' 
+              : 'stats'
+          }
+        />
       )}
 
       {/* 9. Authentication & User Profile Modal */}
@@ -311,17 +302,6 @@ const MainStoreContent: React.FC = () => {
 
       {/* 12. BaridiMob Official SMS Notification Service Modal */}
       <BaridimobSmsModal />
-
-      {/* 13. Publisher Communication Hub Modal (فضاء التواصل مع ناشر الكتاب) */}
-      {(activePublisherBook || (activeModal === 'publisher_contact' && (activeBookForModal || books[0]))) && (
-        <PublisherContactModal
-          book={activePublisherBook || activeBookForModal || books[0]}
-          onClose={() => {
-            setActivePublisherBook(null);
-            if (activeModal === 'publisher_contact') setActiveModal(null);
-          }}
-        />
-      )}
 
     </div>
   );

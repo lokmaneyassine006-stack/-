@@ -71,8 +71,6 @@ export interface Book {
   license: InternationalLicense;
   salesCount: number;
   downloadsCount: number;
-  stockCount?: number;
-  lowStockThreshold?: number;
   createdAt: string;
 }
 
@@ -369,74 +367,4 @@ export interface PromotionBroadcast {
   referralLink: string;
   timestamp: string;
   txRef?: string;
-}
-
-export interface PublisherMessage {
-  id: string;
-  bookId: string;
-  bookTitle: string;
-  publisherName: string;
-  senderId?: string;
-  senderName: string;
-  senderEmail: string;
-  senderPhone?: string;
-  category: 'rights_inquiry' | 'bulk_order' | 'manuscript_submission' | 'reader_question' | 'press_interview' | 'distribution';
-  subject: string;
-  message: string;
-  createdAt: string;
-  status: 'pending' | 'reviewed' | 'replied';
-  publisherReply?: {
-    text: string;
-    repliedAt: string;
-    responderName: string;
-    responderRole: string;
-  };
-}
-
-export interface PublisherProfile {
-  name: string;
-  licenseNumber: string;
-  country: string;
-  city: string;
-  address: string;
-  officialEmail: string;
-  officialPhone: string;
-  whatsappNumber: string;
-  contactPerson: string;
-  contactPersonRole: string;
-  avgResponseHours: number;
-  publishingGenres: string[];
-  submissionOpen: boolean;
-  aboutPublisher: string;
-}
-
-export interface BookRecommendationItem {
-  bookId: string;
-  reason: string;
-  matchScore: number;
-  highlightTag?: string;
-  book?: Book;
-}
-
-export interface RecommendationResponse {
-  readingProfile: string;
-  greeting: string;
-  recommendations: BookRecommendationItem[];
-  source: 'gemini' | 'algorithmic';
-}
-
-export interface TfcAction {
-  label: string;
-  actionType: 'modal' | 'scroll' | 'action';
-  target: string;
-  description?: string;
-}
-
-export interface TfcMessage {
-  id: string;
-  sender: 'user' | 'tfc';
-  text: string;
-  timestamp: string;
-  suggestedActions?: TfcAction[];
-  quickTopics?: string[];
 }
