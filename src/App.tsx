@@ -13,6 +13,7 @@ import { ForumModal } from './components/ForumModal';
 import { WalletModal } from './components/WalletModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { AuthModal } from './components/AuthModal';
+import { UserProfileModal } from './components/UserProfileModal';
 import { CartDrawer } from './components/CartDrawer';
 import { PurchasePromotionTool } from './components/PurchasePromotionTool';
 import { LivePromotionBroadcast } from './components/LivePromotionBroadcast';
@@ -20,7 +21,7 @@ import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { BaridimobSmsModal } from './components/BaridimobSmsModal';
 import { Footer } from './components/Footer';
 import { Book } from './types';
-import { BookOpen, Sparkles, FilterX } from 'lucide-react';
+import { BookOpen, Sparkles, FilterX, Heart } from 'lucide-react';
 
 const MainStoreContent: React.FC = () => {
   const { 
@@ -29,12 +30,14 @@ const MainStoreContent: React.FC = () => {
     setActiveModal, 
     isCartOpen, 
     setIsCartOpen,
-    currentUser
+    currentUser,
+    favorites
   } = useStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('جميع التصنيفات');
   const [onlyMyBooks, setOnlyMyBooks] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
 
   // Selected book for details modal
   const [selectedBookForDetails, setSelectedBookForDetails] = useState<Book | null>(null);
@@ -68,6 +71,11 @@ const MainStoreContent: React.FC = () => {
       if (onlyMyBooks) {
         const isMine = book.isOwnerBook || book.isCustom || book.authorId === currentUser.id;
         if (!isMine) return false;
+      }
+
+      // "قائمتي المفضلة" (My Favorites) filter
+      if (onlyFavorites) {
+        if (!favorites.includes(book.id)) return false;
       }
 
       // Search Query filter across title, author, publisher, ISBN, description, category
@@ -141,6 +149,8 @@ const MainStoreContent: React.FC = () => {
         setSelectedCategory={setSelectedCategory}
         onlyMyBooks={onlyMyBooks}
         setOnlyMyBooks={setOnlyMyBooks}
+        onlyFavorites={onlyFavorites}
+        setOnlyFavorites={setOnlyFavorites}
       />
 
       {/* Main Books Grid Container - Seamless Continuous Section */}
@@ -149,40 +159,72 @@ const MainStoreContent: React.FC = () => {
         {/* Section Header with Refined Balance */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-stone-200/60 dark:border-slate-800/60">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-800 to-emerald-700 text-white flex items-center justify-center font-bold shadow-md shadow-teal-800/20">
-              <BookOpen className="w-5 h-5" />
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shadow-md ${
+              onlyFavorites 
+                ? 'bg-gradient-to-tr from-rose-600 to-pink-500 text-white shadow-rose-500/20'
+                : 'bg-gradient-to-tr from-teal-800 to-emerald-700 text-white shadow-teal-800/20'
+            }`}>
+              {onlyFavorites ? <Heart className="w-5 h-5 fill-white" /> : <BookOpen className="w-5 h-5" />}
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white tracking-tight">
-                {selectedCategory === 'جميع التصنيفات' ? 'أحدث إصدارات وكتب المتجر' : selectedCategory}
+              <h2 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white tracking-tight flex items-center gap-2">
+                <span>{onlyFavorites ? 'قائمتي المفضلة ❤️' : selectedCategory === 'جميع التصنيفات' ? 'أحدث إصدارات وكتب المتجر' : selectedCategory}</span>
+                {onlyFavorites && (
+                  <button
+                    onClick={() => setActiveModal('favorites')}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900 hover:bg-rose-100 transition-colors cursor-pointer"
+                  >
+                    إدارة المفضلة
+                  </button>
+                )}
               </h2>
               <span className="text-xs text-stone-500 dark:text-stone-400 font-medium">
-                عرض {filteredBooks.length} من أصل {books.length} كتاب رقمي وصوتي متوفر
+                {onlyFavorites 
+                  ? `عرض ${filteredBooks.length} كتب من قائمة رغباتك ومفضلتك`
+                  : `عرض ${filteredBooks.length} من أصل ${books.length} كتاب رقمي وصوتي متوفر`}
               </span>
             </div>
           </div>
 
-          {onlyMyBooks && (
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm flex items-center gap-1.5 self-start sm:self-auto">
-              <Sparkles className="w-3.5 h-3.5 fill-amber-200" />
-              <span>شارة كتب المالك مفعلة 👑</span>
-            </span>
-          )}
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            {onlyFavorites && (
+              <span className="px-3 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-sm flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 fill-white" />
+                <span>المفضلة مفعلة ({filteredBooks.length})</span>
+              </span>
+            )}
+            {onlyMyBooks && (
+              <span className="px-3.5 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 fill-amber-200" />
+                <span>شارة كتب المالك مفعلة 👑</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Books Cards Grid */}
         {filteredBooks.length === 0 ? (
           <div className="text-center py-20 bg-white/70 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl border border-stone-200/80 dark:border-slate-800 p-8 space-y-4 shadow-sm">
-            <FilterX className="w-14 h-14 text-stone-300 dark:text-slate-600 mx-auto" />
-            <h3 className="font-black text-lg text-stone-800 dark:text-stone-200">لم يتم العثور على أي كتب تطابق البحث</h3>
+            {onlyFavorites ? (
+              <Heart className="w-14 h-14 text-rose-300 dark:text-rose-800 mx-auto" />
+            ) : (
+              <FilterX className="w-14 h-14 text-stone-300 dark:text-slate-600 mx-auto" />
+            )}
+            <h3 className="font-black text-lg text-stone-800 dark:text-stone-200">
+              {onlyFavorites 
+                ? 'لا توجد كتب في قائمتك المفضلة حالياً' 
+                : 'لم يتم العثور على أي كتب تطابق البحث'}
+            </h3>
             <p className="text-xs text-stone-500 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
-              جرّب تعديل كلمات البحث أو اختيار تصنيف مختلف من القائمة العلوية لاستكشاف مكتبة الكتب الشاملة.
+              {onlyFavorites
+                ? 'انقر على أيقونة القلب ❤️ على بطاقات الكتب لحفظها والرجوع إليها لاحقاً بسهولة.'
+                : 'جرّب تعديل كلمات البحث أو اختيار تصنيف مختلف من القائمة العلوية لاستكشاف مكتبة الكتب الشاملة.'}
             </p>
             <button
-              onClick={() => { setSearchQuery(''); setSelectedCategory('جميع التصنيفات'); setOnlyMyBooks(false); }}
+              onClick={() => { setSearchQuery(''); setSelectedCategory('جميع التصنيفات'); setOnlyMyBooks(false); setOnlyFavorites(false); }}
               className="px-5 py-2.5 rounded-2xl bg-teal-700 text-white text-xs font-black shadow-md hover:bg-teal-800 transition-all cursor-pointer"
             >
-              إعادة ضبط الفلاتر والبحث
+              عرض كافة الكتب في المتجر
             </button>
           </div>
         ) : (
@@ -255,9 +297,21 @@ const MainStoreContent: React.FC = () => {
         <ForumModal onClose={() => setActiveModal(null)} />
       )}
 
-      {/* 7. Wallet & Earnings Modal (Owner Only) */}
-      {activeModal === 'wallet' && currentUser.role === 'owner' && (
-        <WalletModal onClose={() => setActiveModal(null)} />
+      {/* 7. Wallet & Earnings Modal (سحب الأرباح وإدارة الخزينة عبر BaridiMob و Binance) */}
+      {(activeModal === 'wallet' || activeModal === 'withdraw' || activeModal === 'withdraw_baridimob' || activeModal === 'withdraw_binance') && (
+        <WalletModal 
+          onClose={() => setActiveModal(null)} 
+          initialTab={
+            (activeModal === 'withdraw' || activeModal === 'withdraw_baridimob' || activeModal === 'withdraw_binance')
+              ? 'withdraw'
+              : 'balance'
+          }
+          defaultMethod={
+            activeModal === 'withdraw_binance'
+              ? 'binance'
+              : 'baridimob'
+          }
+        />
       )}
 
       {/* 8. Owner Admin Dashboard / President Office / Buyers Registry Modal */}
@@ -274,9 +328,20 @@ const MainStoreContent: React.FC = () => {
         />
       )}
 
-      {/* 9. Authentication & User Profile Modal */}
+      {/* 9. Authentication & Switch User Modal */}
       {activeModal === 'auth' && (
         <AuthModal onClose={() => setActiveModal(null)} />
+      )}
+
+      {/* 9.2 User Profile & My Favorites Modal (قائمتي المفضلة والملف الشخصي) */}
+      {(activeModal === 'profile' || activeModal === 'user_profile' || activeModal === 'favorites' || activeModal === 'my_favorites') && (
+        <UserProfileModal
+          initialTab={(activeModal === 'profile' || activeModal === 'user_profile') ? 'profile' : 'favorites'}
+          onClose={() => setActiveModal(null)}
+          onOpenDetails={(b) => setSelectedBookForDetails(b)}
+          onQuickBinance={(b) => handleOpenQuickBinance(b)}
+          onQuickBaridiMob={(b) => handleOpenQuickBaridiMob(b)}
+        />
       )}
 
       {/* 9.5 Post-Purchase & Platform Promotion Modal */}

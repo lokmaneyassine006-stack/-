@@ -54,10 +54,12 @@ interface StoreContextType {
   deleteBook: (bookId: string) => void;
   addTranslationToBook: (bookId: string, translation: BookTranslation) => void;
 
-  // Reviews
+  // Reviews & Rating System
   reviews: Review[];
   addReview: (bookId: string, rating: number, text: string) => { success: boolean; error?: string };
   likeReview: (reviewId: string) => void;
+  rateBook: (bookId: string, rating: number) => { success: boolean; newRating: number; reviewCount: number };
+  getUserBookRating: (bookId: string) => number | null;
 
   // Cart
   cart: CartItem[];
@@ -68,6 +70,15 @@ interface StoreContextType {
   cartTotalDzd: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+
+  // Favorites / Saved Books in User Profile
+  favorites: string[];
+  favoriteBooks: Book[];
+  toggleFavorite: (bookId: string) => boolean;
+  addToFavorites: (bookId: string) => void;
+  removeFromFavorites: (bookId: string) => void;
+  isFavorite: (bookId: string) => boolean;
+  clearFavorites: () => void;
 
   // Audio / TTS
   audioState: AudioPlayerState;
@@ -259,6 +270,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   // Cart state
   const [cart, setCart] = useState<CartItem[]>(() => loadStorage('cart', []));
+  
+  // User Favorites Map (User ID -> list of favorite book IDs)
+  const [userFavoritesMap, setUserFavoritesMap] = useState<Record<string, string[]>>(() => {
+    return loadStorage('userFavoritesMap', {
+      [OWNER_USER.id]: ['book-owner-1'],
+      'user-saad-bouacha': ['book-owner-1'],
+      'user-2': ['book-owner-1', 'b2'],
+    });
+  });
+
+  // User Ratings Map (User ID -> Book ID -> rating number 1-5)
+  const [userRatingsMap, setUserRatingsMap] = useState<Record<string, Record<string, number>>>(() => {
+    return loadStorage('userRatingsMap', {
+      [OWNER_USER.id]: { 'book-owner-1': 5, 'b1': 5 },
+      'user-2': { 'book-owner-1': 5, 'b2': 4 }
+    });
+  });
   
   // Forum state
   const [forumTopics, setForumTopics] = useState<ForumTopic[]>(() => loadStorage('forumTopics', INITIAL_FORUM_TOPICS));
@@ -825,6 +853,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     body.classList.add(themeClass);
   }, [themeMode]);
 
+  // Sync books to localStorage
+  useEffect(() => {
+    saveStorage('books', books);
+  }, [books]);
+
+  // Sync reviews to localStorage
+  useEffect(() => {
+    saveStorage('reviews', reviews);
+  }, [reviews]);
+
   // Handle language and RTL direction
   const setLanguage = useCallback((langCode: string) => {
     const lang = LANGUAGES.find((l) => l.code === langCode) || LANGUAGES[0];
@@ -1109,6 +1147,75 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, [currentUser, evaluateTopReviewer]);
 
+  // Dedicated Star Rating System
+  const rateBook = useCallback((bookId: string, rating: number) => {
+    const validRating = Math.max(1, Math.min(5, Math.round(rating)));
+    
+    // Check if user already submitted a review or direct rating for this book
+    const existingIndex = reviews.findIndex((r) => r.bookId === bookId && r.userId === currentUser.id);
+
+    let updatedReviews: Review[];
+    if (existingIndex >= 0) {
+      updatedReviews = reviews.map((r, i) =>
+        i === existingIndex ? { ...r, rating: validRating } : r
+      );
+    } else {
+      const newRatingReview: Review = {
+        id: `rev-star-${Date.now()}`,
+        bookId,
+        userId: currentUser.id,
+        userName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || 'قارئ معتمد',
+        userAvatar: currentUser.avatar,
+        userRole: currentUser.role,
+        rating: validRating,
+        text: `تقييم بالنجوم للقارئ (${validRating} من 5 نجوم ⭐)`,
+        likes: 0,
+        likedBy: [],
+        createdAt: new Date().toISOString().split('T')[0],
+        isTopReviewerReward: false,
+      };
+      updatedReviews = [newRatingReview, ...reviews];
+    }
+
+    setReviews(updatedReviews);
+    saveStorage('reviews', updatedReviews);
+
+    // Calculate new average rating for this book
+    const bookRevs = updatedReviews.filter((r) => r.bookId === bookId);
+    const avgRating = bookRevs.length ? Number((bookRevs.reduce((acc, r) => acc + (r.rating || 0), 0) / bookRevs.length).toFixed(1)) : validRating;
+
+    setBooks((prevBooks) => {
+      const nextBooks = prevBooks.map((b) => b.id === bookId ? { ...b, rating: avgRating, reviewCount: bookRevs.length } : b);
+      saveStorage('books', nextBooks);
+      return nextBooks;
+    });
+
+    // Also persist user ratings map
+    setUserRatingsMap((prev) => {
+      const userRatings = prev[currentUser.id] || {};
+      const next = {
+        ...prev,
+        [currentUser.id]: {
+          ...userRatings,
+          [bookId]: validRating
+        }
+      };
+      saveStorage('userRatingsMap', next);
+      return next;
+    });
+
+    return { success: true, newRating: avgRating, reviewCount: bookRevs.length };
+  }, [currentUser, reviews]);
+
+  const getUserBookRating = useCallback((bookId: string): number | null => {
+    const userRatings = userRatingsMap[currentUser.id];
+    if (userRatings && typeof userRatings[bookId] === 'number') {
+      return userRatings[bookId];
+    }
+    const existing = reviews.find((r) => r.bookId === bookId && r.userId === currentUser.id);
+    return existing ? existing.rating : null;
+  }, [currentUser.id, userRatingsMap, reviews]);
+
   // Cart operations
   const addToCart = useCallback((bookId: string, format: 'digital' | 'audio' | 'bundle' = 'digital') => {
     setCart((prev) => {
@@ -1144,6 +1251,77 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (item.format === 'audio') multiplier = 1.1;
     return acc + Math.round(book.priceDzd * multiplier) * item.quantity;
   }, 0);
+
+  // Favorites system: saves books to user's profile for quick access
+  const favorites = userFavoritesMap[currentUser.id] || [];
+
+  const favoriteBooks = books.filter((b) => favorites.includes(b.id));
+
+  const isFavorite = useCallback((bookId: string) => {
+    const currentFavs = userFavoritesMap[currentUser.id] || [];
+    return currentFavs.includes(bookId);
+  }, [currentUser.id, userFavoritesMap]);
+
+  const toggleFavorite = useCallback((bookId: string): boolean => {
+    const currentFavs = userFavoritesMap[currentUser.id] || [];
+    const exists = currentFavs.includes(bookId);
+    const updatedFavs = exists
+      ? currentFavs.filter((id) => id !== bookId)
+      : [...currentFavs, bookId];
+
+    setUserFavoritesMap((prev) => {
+      const next = { ...prev, [currentUser.id]: updatedFavs };
+      saveStorage('userFavoritesMap', next);
+      return next;
+    });
+
+    if (!exists) {
+      try {
+        confetti({
+          particleCount: 25,
+          spread: 50,
+          origin: { y: 0.8 },
+          colors: ['#f43f5e', '#fb7185', '#ec4899', '#14b8a6']
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    return !exists;
+  }, [currentUser.id, userFavoritesMap]);
+
+  const addToFavorites = useCallback((bookId: string) => {
+    const currentFavs = userFavoritesMap[currentUser.id] || [];
+    if (!currentFavs.includes(bookId)) {
+      const updatedFavs = [...currentFavs, bookId];
+      setUserFavoritesMap((prev) => {
+        const next = { ...prev, [currentUser.id]: updatedFavs };
+        saveStorage('userFavoritesMap', next);
+        return next;
+      });
+    }
+  }, [currentUser.id, userFavoritesMap]);
+
+  const removeFromFavorites = useCallback((bookId: string) => {
+    const currentFavs = userFavoritesMap[currentUser.id] || [];
+    if (currentFavs.includes(bookId)) {
+      const updatedFavs = currentFavs.filter((id) => id !== bookId);
+      setUserFavoritesMap((prev) => {
+        const next = { ...prev, [currentUser.id]: updatedFavs };
+        saveStorage('userFavoritesMap', next);
+        return next;
+      });
+    }
+  }, [currentUser.id, userFavoritesMap]);
+
+  const clearFavorites = useCallback(() => {
+    setUserFavoritesMap((prev) => {
+      const next = { ...prev, [currentUser.id]: [] };
+      saveStorage('userFavoritesMap', next);
+      return next;
+    });
+  }, [currentUser.id]);
 
   // Audio & TTS engine
   const playBookTTS = useCallback((book: Book, textToRead?: string, chapterTitle?: string) => {
@@ -2799,6 +2977,8 @@ ${balanceText}${truecallerSeal}
         reviews,
         addReview,
         likeReview,
+        rateBook,
+        getUserBookRating,
         cart,
         addToCart,
         removeFromCart,
@@ -2807,6 +2987,13 @@ ${balanceText}${truecallerSeal}
         cartTotalDzd,
         isCartOpen,
         setIsCartOpen,
+        favorites,
+        favoriteBooks,
+        toggleFavorite,
+        addToFavorites,
+        removeFromFavorites,
+        isFavorite,
+        clearFavorites,
         audioState,
         playBookTTS,
         playBookAudioTrack,

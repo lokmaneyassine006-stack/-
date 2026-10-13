@@ -15,6 +15,7 @@ export interface User {
   isBanned: boolean;
   bio?: string;
   competenceScore?: number;
+  favorites?: string[];
 }
 
 export interface BookTranslation {

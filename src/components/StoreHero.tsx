@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   Search, Sparkles, PlusCircle, Headphones, CreditCard, 
   MessageSquare, ShieldCheck, Check, ArrowRight, Zap, Filter,
-  Crown, BookOpen, Layers, Users
+  Crown, BookOpen, Layers, Users, Heart, Building2
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
@@ -13,6 +13,8 @@ interface StoreHeroProps {
   setSelectedCategory: (cat: string) => void;
   onlyMyBooks: boolean;
   setOnlyMyBooks: (val: boolean) => void;
+  onlyFavorites?: boolean;
+  setOnlyFavorites?: (val: boolean) => void;
 }
 
 export const CATEGORIES = [
@@ -32,12 +34,15 @@ export const StoreHero: React.FC<StoreHeroProps> = ({
   setSelectedCategory,
   onlyMyBooks,
   setOnlyMyBooks,
+  onlyFavorites = false,
+  setOnlyFavorites,
 }) => {
   const { 
     customization, 
     setActiveModal, 
     currentUser,
-    books 
+    books,
+    favoriteBooks
   } = useStore();
 
   // Calculate book count per category
@@ -87,6 +92,25 @@ export const StoreHero: React.FC<StoreHeroProps> = ({
             >
               <PlusCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
               <span>نشر وبيع كتاب جديد</span>
+            </button>
+
+            {/* Direct Withdrawal Actions for BaridiMob & Binance */}
+            <button
+              onClick={() => setActiveModal('withdraw_baridimob')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-black shadow-md shadow-emerald-700/20 hover:shadow-lg transition-all cursor-pointer group"
+              title="إجراء سحب فوري للأرباح عبر بريدي موب (BaridiMob RIP)"
+            >
+              <Building2 className="w-4 h-4 text-emerald-300 group-hover:scale-110 transition-transform" />
+              <span>سحب بريدي موب (BaridiMob) 🇩🇿</span>
+            </button>
+
+            <button
+              onClick={() => setActiveModal('withdraw_binance')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-black shadow-md shadow-amber-500/20 hover:shadow-lg transition-all cursor-pointer group"
+              title="إجراء سحب فوري للأرباح عبر بينانس (Binance Pay / USDT)"
+            >
+              <Zap className="w-4 h-4 fill-white text-white group-hover:scale-110 transition-transform" />
+              <span>سحب بينانس (Binance USDT) ⚡</span>
             </button>
 
             <button
@@ -141,6 +165,30 @@ export const StoreHero: React.FC<StoreHeroProps> = ({
           {/* Interactive Category Chips & "كتابي" Custom Filter */}
           <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start pt-1">
             
+            {/* "قائمتي المفضلة" / Favorites Filter Chip */}
+            <button
+              onClick={() => {
+                if (setOnlyFavorites) {
+                  setOnlyFavorites(!onlyFavorites);
+                } else {
+                  setActiveModal('favorites');
+                }
+              }}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border ${
+                onlyFavorites
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white border-rose-600 shadow-md scale-105 ring-2 ring-rose-300/40'
+                  : 'bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 shadow-xs'
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${onlyFavorites ? 'fill-white stroke-white' : 'fill-rose-500 text-rose-500'}`} />
+              <span>قائمتي المفضلة</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                onlyFavorites ? 'bg-white/20 text-white' : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-bold'
+              }`}>
+                {favoriteBooks.length}
+              </span>
+            </button>
+
             {/* "كتابي" / Owner Filter Chip */}
             <button
               onClick={() => setOnlyMyBooks(!onlyMyBooks)}

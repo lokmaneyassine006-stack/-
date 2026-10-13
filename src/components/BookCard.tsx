@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Star, Headphones, Globe, ShieldCheck, Zap, ShoppingBag, 
   Trash2, Edit3, BookOpen, Check, Eye, Building2, Sparkles,
-  Volume2
+  Volume2, Heart
 } from 'lucide-react';
 import { Book } from '../types';
 import { useStore } from '../context/StoreContext';
@@ -29,7 +29,9 @@ export const BookCard: React.FC<BookCardProps> = ({
     playBookAudioTrack, 
     currentUser, 
     deleteBook, 
-    updateBookPrice 
+    updateBookPrice,
+    toggleFavorite,
+    isFavorite
   } = useStore();
 
   const [isEditingPrice, setIsEditingPrice] = useState(false);
@@ -38,6 +40,7 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   const priceObj = formatPrice(book.priceDzd, selectedCurrency, customization.exchangeRateUsdtToDzd);
   const isOwnerOrCreator = currentUser.role === 'owner' || currentUser.id === book.authorId;
+  const isFav = isFavorite(book.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -107,8 +110,26 @@ export const BookCard: React.FC<BookCardProps> = ({
             </span>
           )}
 
-          {/* Audio & License & PDF Badges */}
-          <div className="flex items-center gap-1">
+          {/* Audio & License & PDF Badges and Heart Favorite Button */}
+          <div className="flex items-center gap-1.5 pointer-events-auto">
+            {/* Heart Favorite Toggle Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFavorite(book.id);
+              }}
+              className={`p-1.5 rounded-full backdrop-blur-md transition-all duration-300 transform active:scale-75 shadow-md cursor-pointer border ${
+                isFav
+                  ? 'bg-rose-500 text-white border-rose-400 shadow-rose-500/50 scale-110 ring-2 ring-rose-300/40'
+                  : 'bg-black/55 hover:bg-black/80 text-white hover:text-rose-400 border-white/20 hover:scale-110'
+              }`}
+              title={isFav ? 'في قائمتي المفضلة (انقر للإزالة)' : 'حفظ في قائمتي المفضلة ❤️'}
+              aria-label={isFav ? 'إزالة من قائمتي المفضلة' : 'حفظ في قائمتي المفضلة'}
+            >
+              <Heart className={`w-3.5 h-3.5 transition-all duration-300 ${isFav ? 'fill-white stroke-white' : 'stroke-[2.2]'}`} />
+            </button>
+
             <span className="p-1.5 rounded-full bg-red-600 text-white shadow-md border border-red-400/40 text-[9px] font-black" title="ملف PDF رقمي جاهز للتحميل والقراءة">
               PDF
             </span>
@@ -165,6 +186,28 @@ export const BookCard: React.FC<BookCardProps> = ({
           <p className="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-2">
             تأليف: <span className="font-bold text-stone-800 dark:text-stone-200">{book.author}</span>
           </p>
+
+          {/* Average Rating Display on Main Interface Card */}
+          <div className="flex items-center gap-1.5 mb-2 bg-amber-50/80 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-200/60 dark:border-amber-800/40 w-fit" title={`متوسط تقييم القراء: ${(book.rating || 0).toFixed(1)} من 5 (${book.reviewCount || 0} تقييم)`}>
+            <div className="flex items-center text-amber-400">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`w-3 h-3 ${
+                    star <= Math.round(book.rating || 0)
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'text-stone-300 dark:text-stone-600'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs font-black text-amber-700 dark:text-amber-300">
+              {(book.rating || 0).toFixed(1)}
+            </span>
+            <span className="text-[10px] text-stone-500 dark:text-stone-400">
+              ({book.reviewCount || 0} تقييم)
+            </span>
+          </div>
 
           {/* Description */}
           <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2 leading-relaxed">
@@ -274,7 +317,7 @@ export const BookCard: React.FC<BookCardProps> = ({
             </button>
           </div>
 
-          {/* Audio & Details Bar */}
+          {/* Audio, Favorite & Details Bar */}
           <div className="flex items-center justify-between pt-1 text-[11px] text-stone-500 dark:text-stone-400" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={handleAudioPreview}
@@ -282,6 +325,21 @@ export const BookCard: React.FC<BookCardProps> = ({
             >
               <Headphones className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
               <span>استماع صوتي</span>
+            </button>
+
+            {/* Favorite quick toggle */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFavorite(book.id);
+              }}
+              className={`flex items-center gap-1 font-bold transition-colors cursor-pointer ${
+                isFav ? 'text-rose-600 dark:text-rose-400 font-black' : 'hover:text-rose-600 dark:hover:text-rose-400'
+              }`}
+              title={isFav ? 'في قائمتك المفضلة (انقر للحذف)' : 'حفظ في قائمتي المفضلة'}
+            >
+              <Heart className={`w-3.5 h-3.5 transition-transform duration-200 ${isFav ? 'fill-rose-500 text-rose-500 scale-110' : ''}`} />
+              <span>{isFav ? 'بالمفضلة' : 'حفظ'}</span>
             </button>
 
             <button
